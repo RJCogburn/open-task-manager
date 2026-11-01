@@ -1,0 +1,332 @@
+//! The live sampler: one background thread that refreshes CPU, memory,
+//! processes, disk and network counters on a timer and sends the result to the
+//! window as a `sample` event. Pages that need more (the process table) read
+//! the same refreshed `System` instead of refreshing it again.
+
+use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use serde::Serialize;
+use sysinfo::{Networks, ProcessRefreshKind, ProcessesToUpdate, System, ThreadKind, UpdateKind, Users};
+use tauri::{AppHandle, Emitter, State};
+
+use crate::AppState;
+use crate::gpu::{GpuMonitor, GpuSample};
+
+pub struct Shared {
+    pub sys: System,
+    pub users: Users,
+    /// Seconds covered by the last refresh, for turning byte counts into rates.
+    pub elapsed: f64,
+}
+
+impl Shared {
+    pub fn new() -> Self {
+        let mut sys = System::new().expect("sysinfo is supported on this platform");
+        sys.refresh_cpu_all();
+        sys.refresh_memory();
+        sys.refresh_processes_specifics(ProcessesToUpdate::All, true, process_refresh());
+        let users = Users::new_with_refreshed_list().expect("sysinfo is supported on this platform");
+        Self { sys, users, elapsed: 1.0 }
+    }
+}
+
+fn process_refresh() -> ProcessRefreshKind {
+    // Without tasks: sysinfo otherwise also lists each thread as a process.
+    ProcessRefreshKind::nothing()
+        .without_tasks()
+        .with_cpu()
+        .with_memory()
+        .with_disk_usage()
+        .with_user(UpdateKind::OnlyIfNotSet)
+        .with_cmd(UpdateKind::OnlyIfNotSet)
+        .with_exe(UpdateKind::OnlyIfNotSet)
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Sample {
+    time: u64,
+    cpu: f32,
+    cores: Vec<f32>,
+    freqs: Vec<u64>,
+    cpu_temp: Option<f32>,
+    mem_used: u64,
+    mem_total: u64,
+    swap_used: u64,
+    swap_total: u64,
+    disks: Vec<DiskIo>,
+    nets: Vec<NetIo>,
+    gpus: Vec<GpuSample>,
+    processes: usize,
+    threads: usize,
+    uptime: u64,
+    load: [f64; 3],
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DiskIo {
+    name: String,
+    label: String,
+    read: f64,
+    write: f64,
+    busy: f64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NetIo {
+    name: String,
+    rx: f64,
+    tx: f64,
+    rx_total: u64,
+    tx_total: u64,
+}
+
+pub fn spawn(app: AppHandle, shared: Arc<Mutex<Shared>>, gpu: Arc<GpuMonitor>, interval_ms: Arc<AtomicU64>) {
+    thread::spawn(move || {
+        let mut networks = Networks::new_with_refreshed_list().ok();
+        let mut disks = DiskStats::default();
+        disks.read();
+        let cpu_temp = find_cpu_temp_input();
+        let mut last = Instant::now();
+        let mut ticks: u64 = 0;
+        loop {
+            thread::sleep(Duration::from_millis(interval_ms.load(Ordering::Relaxed)));
+            let now = Instant::now();
+            let dt = now.duration_since(last).as_secs_f64().max(0.001);
+            last = now;
+            ticks += 1;
+
+            let mut sample = {
+                let mut s = shared.lock().unwrap();
+                s.sys.refresh_cpu_all();
+                s.sys.refresh_memory();
+                s.sys.refresh_processes_specifics(ProcessesToUpdate::All, true, process_refresh());
+                if ticks.is_multiple_of(60) {
+                    s.users.refresh();
+                }
+                s.elapsed = dt;
+                let sys = &s.sys;
+                let load = System::load_average().map(|l| [l.one, l.five, l.fifteen]).unwrap_or_default();
+                Sample {
+                    time: SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0),
+                    cpu: sys.global_cpu_usage(),
+                    cores: sys.cpus().iter().map(|c| c.usage()).collect(),
+                    freqs: sys.cpus().iter().map(|c| c.frequency()).collect(),
+                    cpu_temp: None,
+                    mem_used: sys.total_memory().saturating_sub(sys.available_memory()),
+                    mem_total: sys.total_memory(),
+                    swap_used: sys.used_swap(),
+                    swap_total: sys.total_swap(),
+                    disks: Vec::new(),
+                    nets: Vec::new(),
+                    gpus: Vec::new(),
+                    processes: sys
+                        .processes()
+                        .values()
+                        .filter(|p| p.thread_kind() != Some(ThreadKind::Userland))
+                        .count(),
+                    threads: total_threads(),
+                    uptime: System::uptime().unwrap_or(0),
+                    load,
+                }
+            };
+
+            sample.cpu_temp = cpu_temp.as_ref().and_then(read_millidegrees);
+            sample.disks = disks.rates(dt);
+            if let Some(networks) = networks.as_mut() {
+                networks.refresh(true);
+                sample.nets = networks
+                    .iter()
+                    .filter(|(name, _)| name.as_os_str() != "lo")
+                    .map(|(name, data)| NetIo {
+                        name: name.to_string_lossy().into_owned(),
+                        rx: data.received() as f64 / dt,
+                        tx: data.transmitted() as f64 / dt,
+                        rx_total: data.total_received(),
+                        tx_total: data.total_transmitted(),
+                    })
+                    .collect();
+                sample.nets.sort_by(|a, b| a.name.cmp(&b.name));
+            }
+            sample.gpus = gpu.sample();
+            let _ = app.emit("sample", &sample);
+        }
+    });
+}
+
+/// Threads on the whole system: the total in the fourth field of
+/// /proc/loadavg ("running/total").
+fn total_threads() -> usize {
+    fs::read_to_string("/proc/loadavg")
+        .ok()
+        .and_then(|s| s.split_whitespace().nth(3)?.split('/').nth(1)?.parse().ok())
+        .unwrap_or(0)
+}
+
+/// The CPU package temperature input from the kernel's hwmon interface, the
+/// same source lm-sensors reads.
+fn find_cpu_temp_input() -> Option<PathBuf> {
+    for entry in fs::read_dir("/sys/class/hwmon").ok()?.flatten() {
+        let name = fs::read_to_string(entry.path().join("name")).unwrap_or_default();
+        if matches!(name.trim(), "k10temp" | "zenpower" | "coretemp" | "cpu_thermal") {
+            let input = entry.path().join("temp1_input");
+            if input.exists() {
+                return Some(input);
+            }
+        }
+    }
+    None
+}
+
+fn read_millidegrees(path: &PathBuf) -> Option<f32> {
+    fs::read_to_string(path).ok()?.trim().parse::<f32>().ok().map(|m| m / 1000.0)
+}
+
+/// Read/write rates and busy time per whole disk, from /proc/diskstats.
+#[derive(Default)]
+struct DiskStats {
+    prev: HashMap<String, (u64, u64, u64)>,
+    now: HashMap<String, (u64, u64, u64)>,
+}
+
+impl DiskStats {
+    fn read(&mut self) {
+        self.now.clear();
+        let Ok(text) = fs::read_to_string("/proc/diskstats") else { return };
+        for line in text.lines() {
+            let f: Vec<&str> = line.split_whitespace().collect();
+            if f.len() < 13 {
+                continue;
+            }
+            let name = f[2];
+            // Whole disks only: partitions have no entry of their own in /sys/block.
+            if name.starts_with("loop") || name.starts_with("ram") || name.starts_with("zram") {
+                continue;
+            }
+            if !std::path::Path::new("/sys/block").join(name).exists() {
+                continue;
+            }
+            let sectors_read: u64 = f[5].parse().unwrap_or(0);
+            let sectors_written: u64 = f[9].parse().unwrap_or(0);
+            let ms_busy: u64 = f[12].parse().unwrap_or(0);
+            self.now.insert(name.to_string(), (sectors_read, sectors_written, ms_busy));
+        }
+    }
+
+    fn rates(&mut self, dt: f64) -> Vec<DiskIo> {
+        std::mem::swap(&mut self.prev, &mut self.now);
+        self.read();
+        let mut out: Vec<DiskIo> = self
+            .now
+            .iter()
+            .filter_map(|(name, &(r, w, busy))| {
+                let &(pr, pw, pbusy) = self.prev.get(name)?;
+                Some(DiskIo {
+                    name: name.clone(),
+                    label: disk_label(name),
+                    read: r.saturating_sub(pr) as f64 * 512.0 / dt,
+                    write: w.saturating_sub(pw) as f64 * 512.0 / dt,
+                    busy: (busy.saturating_sub(pbusy) as f64 / (dt * 1000.0) * 100.0).min(100.0),
+                })
+            })
+            .collect();
+        out.sort_by(|a, b| a.name.cmp(&b.name));
+        out
+    }
+}
+
+/// A friendlier name: the model for real drives, the mapper name for dm devices.
+fn disk_label(name: &str) -> String {
+    let base = std::path::Path::new("/sys/block").join(name);
+    if let Ok(dm) = fs::read_to_string(base.join("dm/name")) {
+        let dm = dm.trim();
+        // A LUKS mapping is named after its UUID; say what it sits on instead.
+        let under: Vec<String> = fs::read_dir(base.join("slaves"))
+            .map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect())
+            .unwrap_or_default();
+        return match (dm.starts_with("luks-") || dm.starts_with("crypt"), under.is_empty()) {
+            (true, false) => format!("Encrypted volume on {} ({name})", under.join(", ")),
+            (true, true) => format!("Encrypted volume ({name})"),
+            _ => format!("{dm} ({name})"),
+        };
+    }
+    match fs::read_to_string(base.join("device/model")) {
+        Ok(model) if !model.trim().is_empty() => format!("{} ({name})", model.trim()),
+        _ => name.to_string(),
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemInfo {
+    host_name: String,
+    user_name: String,
+    home_dir: String,
+    os: String,
+    kernel: String,
+    cpu_brand: String,
+    physical_cores: usize,
+    logical_cores: usize,
+    mem_total: u64,
+    swap_total: u64,
+}
+
+#[tauri::command]
+pub fn system_info(state: State<'_, AppState>) -> SystemInfo {
+    let s = state.shared.lock().unwrap();
+    SystemInfo {
+        host_name: System::host_name().unwrap_or_default(),
+        user_name: std::env::var("USER").unwrap_or_default(),
+        home_dir: std::env::var("HOME").unwrap_or_default(),
+        os: System::long_os_version().unwrap_or_default(),
+        kernel: System::kernel_version().unwrap_or_default(),
+        cpu_brand: s.sys.cpus().first().map(|c| c.brand().trim().to_string()).unwrap_or_default(),
+        physical_cores: System::physical_core_count().unwrap_or(0),
+        logical_cores: s.sys.cpus().len(),
+        mem_total: s.sys.total_memory(),
+        swap_total: s.sys.total_swap(),
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Mount {
+    device: String,
+    mount_point: String,
+    file_system: String,
+    total: u64,
+    available: u64,
+    removable: bool,
+}
+
+#[tauri::command]
+pub fn mounts() -> Vec<Mount> {
+    let Ok(disks) = sysinfo::Disks::new_with_refreshed_list() else { return Vec::new() };
+    let mut seen = std::collections::HashSet::new();
+    disks
+        .iter()
+        // Btrfs subvolumes show up once per mount; keep the first of each device.
+        .filter(|d| seen.insert(d.name().to_os_string()))
+        .map(|d| Mount {
+            device: d.name().to_string_lossy().into_owned(),
+            mount_point: d.mount_point().to_string_lossy().into_owned(),
+            file_system: d.file_system().to_string_lossy().into_owned(),
+            total: d.total_space(),
+            available: d.available_space(),
+            removable: d.is_removable(),
+        })
+        .collect()
+}
+
+#[tauri::command]
+pub fn set_interval(state: State<'_, AppState>, ms: u64) {
+    state.interval_ms.store(ms.clamp(250, 10_000), Ordering::Relaxed);
+}

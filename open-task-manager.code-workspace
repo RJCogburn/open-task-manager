@@ -1,0 +1,111 @@
+{
+  "folders": [
+    { "name": "open-task-manager", "path": "." }
+  ],
+  "settings": {
+    "files.exclude": {
+      "dist": true,
+      "src-tauri/target": true,
+      "src-tauri/gen": true
+    },
+    "search.exclude": {
+      "node_modules": true,
+      "src-tauri/Cargo.lock": true,
+      "package-lock.json": true
+    },
+    "files.watcherExclude": {
+      "**/target/**": true,
+      "**/node_modules/**": true
+    },
+    "editor.formatOnSave": true,
+    "[rust]": {
+      "editor.defaultFormatter": "rust-lang.rust-analyzer",
+      "editor.rulers": [120]
+    },
+    "[svelte]": {
+      "editor.defaultFormatter": "svelte.svelte-vscode"
+    },
+    "rust-analyzer.linkedProjects": ["src-tauri/Cargo.toml"],
+    "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.cargo.targetDir": "src-tauri/target/rust-analyzer",
+    "typescript.tsdk": "node_modules/typescript/lib"
+  },
+  "extensions": {
+    "recommendations": [
+      "rust-lang.rust-analyzer",
+      "tauri-apps.tauri-vscode",
+      "svelte.svelte-vscode",
+      "vadimcn.vscode-lldb",
+      "tamasfe.even-better-toml"
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Run app (dev)",
+        "type": "shell",
+        "command": "npm run tauri dev",
+        "isBackground": true,
+        "problemMatcher": []
+      },
+      {
+        "label": "Build packages (deb, rpm, AppImage)",
+        "type": "shell",
+        "command": "npm run tauri build",
+        "problemMatcher": ["$rustc"]
+      },
+      {
+        "label": "Vite dev server",
+        "type": "shell",
+        "command": "npm run dev",
+        "isBackground": true,
+        "problemMatcher": {
+          "owner": "vite",
+          "pattern": { "regexp": "^$" },
+          "background": { "beginsPattern": "VITE", "endsPattern": "Local:" }
+        }
+      },
+      {
+        "label": "Test (Rust)",
+        "type": "shell",
+        "command": "cargo test --manifest-path src-tauri/Cargo.toml",
+        "group": { "kind": "test", "isDefault": true },
+        "problemMatcher": ["$rustc"]
+      },
+      {
+        "label": "Clippy",
+        "type": "shell",
+        "command": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets",
+        "problemMatcher": ["$rustc"]
+      },
+      {
+        "label": "Check UI (svelte-check)",
+        "type": "shell",
+        "command": "npm run check",
+        "problemMatcher": []
+      },
+      {
+        "label": "Check everything",
+        "dependsOn": ["Test (Rust)", "Clippy", "Check UI (svelte-check)"],
+        "dependsOrder": "sequence",
+        "group": { "kind": "build", "isDefault": true },
+        "problemMatcher": []
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug app (Rust)",
+        "type": "lldb",
+        "request": "launch",
+        "cargo": {
+          "args": ["build", "--manifest-path=./src-tauri/Cargo.toml"]
+        },
+        "preLaunchTask": "Vite dev server"
+      }
+    ]
+  }
+}
