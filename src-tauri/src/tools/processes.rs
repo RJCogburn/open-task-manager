@@ -1,12 +1,14 @@
 //! The process table and the actions on a process: end, kill and priority.
 
 use std::io;
+use std::sync::Mutex;
 
 use serde::Serialize;
 use tauri::State;
 
 use crate::AppState;
 use crate::programs;
+use crate::sampler::Shared;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,8 +31,15 @@ pub struct ProcInfo {
 }
 
 #[tauri::command]
-pub fn processes(state: State<'_, AppState>) -> Vec<ProcInfo> {
-    let s = state.shared.lock().unwrap();
+pub async fn processes(state: State<'_, AppState>) -> Result<Vec<ProcInfo>, String> {
+    // Off the main thread: the first call after a pause waits a moment for fresh readings.
+    let shared = state.shared.clone();
+    tauri::async_runtime::spawn_blocking(move || list(&shared)).await.map_err(|e| e.to_string())
+}
+
+fn list(shared: &Mutex<Shared>) -> Vec<ProcInfo> {
+    Shared::want_processes(shared);
+    let s = shared.lock().unwrap();
     let cores = s.sys.cpus().len().max(1) as f32;
     let dt = s.elapsed;
     s.sys

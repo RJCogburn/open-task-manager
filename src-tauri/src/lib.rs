@@ -39,6 +39,15 @@ pub fn apply_webkit_workarounds() {
 }
 
 pub fn run() {
+    // Tauri starts an async worker per CPU thread by default, 32 on a big
+    // machine. The app waits on the system far more than it computes, and slow
+    // work goes to blocking threads, so a few workers are plenty.
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(4)
+        .enable_all()
+        .build()
+        .expect("could not start the async runtime");
+    tauri::async_runtime::set(runtime.handle().clone());
     let shared = Arc::new(Mutex::new(sampler::Shared::new()));
     let interval_ms = Arc::new(AtomicU64::new(1000));
     let gpu = Arc::new(gpu::GpuMonitor::start());

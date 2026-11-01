@@ -23,18 +23,52 @@ pub struct ScanState {
     result: Mutex<Option<ScanResult>>,
 }
 
+/// A finished scan, kept compact: a big drive has millions of entries. Names
+/// share one string, and each folder's contents sit side by side in `nodes`,
+/// largest first, so an entry needs 32 bytes plus its name.
 struct ScanResult {
     root: PathBuf,
     nodes: Vec<Node>,
+    names: String,
 }
 
 struct Node {
-    name: Box<str>,
     size: u64,
-    items: u64,
-    is_dir: bool,
+    /// Where the name starts in `names`, and its length.
+    name: u32,
+    name_len: u32,
+    items: u32,
     parent: u32,
-    children: Vec<u32>,
+    /// The contents: `children` entries starting at `first_child`.
+    first_child: u32,
+    children: u32,
+}
+
+impl Node {
+    fn is_dir(&self) -> bool {
+        self.first_child != NO_CHILDREN
+    }
+
+    fn child_ids(&self) -> std::ops::Range<u32> {
+        if self.is_dir() { self.first_child..self.first_child + self.children } else { 0..0 }
+    }
+}
+
+/// `first_child` of a file, telling it from an empty folder.
+const NO_CHILDREN: u32 = u32::MAX;
+
+impl ScanResult {
+    fn name(&self, id: u32) -> &str {
+        let n = &self.nodes[id as usize];
+        &self.names[n.name as usize..(n.name + n.name_len) as usize]
+    }
+}
+
+/// Hands memory the allocator holds but no longer uses back to the system.
+/// After a scan on many threads that can be hundreds of megabytes.
+fn release_memory() {
+    // SAFETY: malloc_trim only returns free pages; it touches nothing in use.
+    unsafe { libc::malloc_trim(0) };
 }
 
 /// The tree as the walk builds it, before it is flattened for browsing.
@@ -101,21 +135,48 @@ impl Walk {
     }
 }
 
-fn flatten(tree: Tree, parent: u32, nodes: &mut Vec<Node>) -> u32 {
-    let id = nodes.len() as u32;
-    nodes.push(Node {
-        name: tree.name,
+fn node(tree: &Tree, parent: u32, names: &mut String) -> Node {
+    let name = names.len() as u32;
+    names.push_str(&tree.name);
+    Node {
         size: tree.size,
-        items: tree.items,
-        is_dir: tree.is_dir,
+        name,
+        name_len: tree.name.len() as u32,
+        items: tree.items.min(u32::MAX as u64) as u32,
         parent,
-        children: Vec::new(),
-    });
+        first_child: if tree.is_dir { 0 } else { NO_CHILDREN },
+        children: 0,
+    }
+}
+
+/// Turns the walked tree into the compact result: the root is entry 0, and
+/// each folder's contents are placed together, largest first.
+fn flatten(tree: Tree, root: PathBuf) -> ScanResult {
+    let mut result = ScanResult { root, nodes: Vec::new(), names: String::new() };
+    result.nodes.push(node(&tree, u32::MAX, &mut result.names));
+    place_children(tree, 0, &mut result);
+    result.nodes.shrink_to_fit();
+    result.names.shrink_to_fit();
+    result
+}
+
+fn place_children(tree: Tree, id: u32, result: &mut ScanResult) {
     let mut children = tree.children;
+    if !tree.is_dir {
+        return;
+    }
     children.sort_unstable_by_key(|c| std::cmp::Reverse(c.size));
-    let ids: Vec<u32> = children.into_iter().map(|c| flatten(c, id, nodes)).collect();
-    nodes[id as usize].children = ids;
-    id
+    let first = result.nodes.len() as u32;
+    for child in &children {
+        let n = node(child, id, &mut result.names);
+        result.nodes.push(n);
+    }
+    let parent = &mut result.nodes[id as usize];
+    parent.first_child = first;
+    parent.children = children.len() as u32;
+    for (i, child) in children.into_iter().enumerate() {
+        place_children(child, first + i as u32, result);
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -142,6 +203,9 @@ pub fn scan_start(app: AppHandle, state: State<'_, AppState>, path: String) -> R
         return Err("A scan is already running.".into());
     }
     scan.cancel.store(false, Ordering::SeqCst);
+    // Let the last result go before the new one is built, rather than holding both.
+    *scan.result.lock().unwrap() = None;
+    release_memory();
     let walk = Arc::new(Walk {
         device: md.dev(),
         cancel: scan.cancel.clone(),
@@ -163,13 +227,20 @@ pub fn scan_start(app: AppHandle, state: State<'_, AppState>, path: String) -> R
 
     std::thread::spawn(move || {
         let name: Box<str> = root.to_string_lossy().into();
-        let tree = walk.dir(&root, name);
+        // Threads for this scan only; they end with it rather than idling for good.
+        let tree = match rayon::ThreadPoolBuilder::new().thread_name(|i| format!("disk-scan-{i}")).build() {
+            Ok(pool) => pool.install(|| walk.dir(&root, name)),
+            Err(_) => walk.dir(&root, name),
+        };
         let cancelled = walk.cancel.load(Ordering::Relaxed);
-        if !cancelled {
-            let mut nodes = Vec::new();
-            flatten(tree, u32::MAX, &mut nodes);
-            *scan.result.lock().unwrap() = Some(ScanResult { root, nodes });
+        if cancelled {
+            drop(tree);
+        } else {
+            *scan.result.lock().unwrap() = Some(flatten(tree, root));
         }
+        // The walk's tree is gone now; give its memory back.
+        walk.seen_links.lock().unwrap().clear();
+        release_memory();
         finished.store(true, Ordering::Relaxed);
         scan.running.store(false, Ordering::SeqCst);
         let _ = app.emit("scan-progress", progress(&walk, started, true, cancelled, None));
@@ -224,10 +295,10 @@ const MAX_CHILDREN: usize = 400;
 pub fn scan_folder(state: State<'_, AppState>, id: u32) -> Result<Folder, String> {
     let guard = state.scan.result.lock().unwrap();
     let result = guard.as_ref().ok_or("Nothing has been scanned yet.")?;
-    let node = result.nodes.get(id as usize).filter(|n| n.is_dir).ok_or("That folder is not in the scan.")?;
+    let node = result.nodes.get(id as usize).filter(|n| n.is_dir()).ok_or("That folder is not in the scan.")?;
     let entry = |id: u32| {
         let n = &result.nodes[id as usize];
-        Entry { id, name: n.name.to_string(), size: n.size, items: n.items, is_dir: n.is_dir }
+        Entry { id, name: result.name(id).to_string(), size: n.size, items: n.items as u64, is_dir: n.is_dir() }
     };
     let mut trail = Vec::new();
     let mut at = id;
@@ -240,10 +311,10 @@ pub fn scan_folder(state: State<'_, AppState>, id: u32) -> Result<Folder, String
         id,
         path: node_path(result, id).to_string_lossy().into_owned(),
         size: node.size,
-        items: node.items,
+        items: node.items as u64,
         trail,
-        children: node.children.iter().take(MAX_CHILDREN).map(|&c| entry(c)).collect(),
-        more: node.children.len().saturating_sub(MAX_CHILDREN),
+        children: node.child_ids().take(MAX_CHILDREN).map(entry).collect(),
+        more: (node.children as usize).saturating_sub(MAX_CHILDREN),
     })
 }
 
@@ -251,7 +322,7 @@ fn node_path(result: &ScanResult, id: u32) -> PathBuf {
     let mut parts = Vec::new();
     let mut at = id;
     while at != 0 && at != u32::MAX {
-        parts.push(&*result.nodes[at as usize].name);
+        parts.push(result.name(at));
         at = result.nodes[at as usize].parent;
     }
     let mut path = result.root.clone();
@@ -288,12 +359,12 @@ pub fn scan_summary(state: State<'_, AppState>) -> Result<Summary, String> {
     let result = guard.as_ref().ok_or("Nothing has been scanned yet.")?;
     let mut heap = BinaryHeap::new();
     let mut types: HashMap<String, (u64, u64)> = HashMap::new();
-    for (id, node) in result.nodes.iter().enumerate().filter(|(_, n)| !n.is_dir) {
+    for (id, node) in result.nodes.iter().enumerate().filter(|(_, n)| !n.is_dir()) {
         heap.push(std::cmp::Reverse((node.size, id as u32)));
         if heap.len() > 50 {
             heap.pop();
         }
-        let ext = match node.name.rsplit_once('.') {
+        let ext = match result.name(id as u32).rsplit_once('.') {
             Some((stem, ext)) if !stem.is_empty() && ext.len() <= 10 => ext.to_ascii_lowercase(),
             _ => "(none)".into(),
         };
@@ -314,4 +385,47 @@ pub fn scan_summary(state: State<'_, AppState>) -> Result<Summary, String> {
     types.sort_by_key(|t| std::cmp::Reverse(t.size));
     types.truncate(24);
     Ok(Summary { largest, types })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn file(name: &str, size: u64) -> Tree {
+        Tree { name: name.into(), size, items: 1, is_dir: false, children: Vec::new() }
+    }
+
+    fn dir(name: &str, children: Vec<Tree>) -> Tree {
+        let size = children.iter().map(|c| c.size).sum();
+        let items = 1 + children.iter().map(|c| c.items).sum::<u64>();
+        Tree { name: name.into(), size, items, is_dir: true, children }
+    }
+
+    #[test]
+    fn keeps_the_tree_compactly() {
+        let tree = dir(
+            "/scan",
+            vec![
+                file("small.txt", 10),
+                dir("docs", vec![file("a.pdf", 300), file("b.md", 5)]),
+                dir("empty", vec![]),
+                file("big.iso", 900),
+            ],
+        );
+        let r = flatten(tree, PathBuf::from("/scan"));
+        let root = &r.nodes[0];
+        assert!(root.is_dir());
+        let names: Vec<&str> = root.child_ids().map(|id| r.name(id)).collect();
+        assert_eq!(names, ["big.iso", "docs", "small.txt", "empty"], "largest first");
+        let docs = root.child_ids().find(|&id| r.name(id) == "docs").unwrap();
+        let inside: Vec<(&str, u64)> =
+            r.nodes[docs as usize].child_ids().map(|id| (r.name(id), r.nodes[id as usize].size)).collect();
+        assert_eq!(inside, [("a.pdf", 300), ("b.md", 5)]);
+        let pdf = r.nodes[docs as usize].first_child;
+        assert_eq!(node_path(&r, pdf), PathBuf::from("/scan/docs/a.pdf"));
+        let empty = root.child_ids().find(|&id| r.name(id) == "empty").unwrap();
+        assert!(r.nodes[empty as usize].is_dir() && r.nodes[empty as usize].child_ids().is_empty());
+        assert!(!r.nodes[pdf as usize].is_dir());
+        assert_eq!(std::mem::size_of::<Node>(), 32);
+    }
 }

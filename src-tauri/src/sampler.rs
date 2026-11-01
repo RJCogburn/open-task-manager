@@ -24,8 +24,13 @@ use crate::widgets::Widgets;
 pub struct Shared {
     pub sys: System,
     pub users: Users,
-    /// Seconds covered by the last refresh, for turning byte counts into rates.
+    /// Seconds covered by the last process refresh, for turning byte counts into rates.
     pub elapsed: f64,
+    /// When a page last asked for process details. Reading every process
+    /// costs more than the rest of a sample together, so it is only done
+    /// while someone is looking.
+    pub process_demand: Option<Instant>,
+    processes_read: Instant,
 }
 
 impl Shared {
@@ -35,11 +40,44 @@ impl Shared {
         sys.refresh_memory();
         sys.refresh_processes_specifics(ProcessesToUpdate::All, true, process_refresh());
         let users = Users::new_with_refreshed_list().expect("sysinfo is supported on this platform");
-        Self { sys, users, elapsed: 1.0 }
+        Self { sys, users, elapsed: 1.0, process_demand: None, processes_read: Instant::now() }
+    }
+
+    /// Reads every process's details now.
+    pub fn refresh_processes(&mut self) {
+        self.sys.refresh_processes_specifics(ProcessesToUpdate::All, true, process_refresh());
+        self.elapsed = self.processes_read.elapsed().as_secs_f64().max(0.001);
+        self.processes_read = Instant::now();
+    }
+
+    /// Marks process details as wanted, and makes sure they are fresh. After a
+    /// pause it reads twice, a moment apart, so CPU use is current rather than
+    /// averaged over the pause. Called with the lock held; it may release and
+    /// take it again.
+    pub fn want_processes(shared: &Mutex<Shared>) {
+        let mut s = shared.lock().unwrap();
+        s.process_demand = Some(Instant::now());
+        if s.processes_read.elapsed() > Duration::from_millis(2500) {
+            s.refresh_processes();
+            drop(s);
+            thread::sleep(Duration::from_millis(300));
+            shared.lock().unwrap().refresh_processes();
+        }
+    }
+
+    fn processes_wanted(&self) -> bool {
+        self.process_demand.is_some_and(|t| t.elapsed() < Duration::from_secs(5))
     }
 }
 
-fn process_refresh() -> ProcessRefreshKind {
+/// Processes running, from /proc, without reading any of them.
+fn count_processes() -> usize {
+    fs::read_dir("/proc")
+        .map(|d| d.flatten().filter(|e| e.file_name().as_encoded_bytes().iter().all(u8::is_ascii_digit)).count())
+        .unwrap_or(0)
+}
+
+pub(crate) fn process_refresh() -> ProcessRefreshKind {
     // Without tasks: sysinfo otherwise also lists each thread as a process.
     ProcessRefreshKind::nothing()
         .without_tasks()
@@ -119,11 +157,13 @@ pub fn spawn(
                 let mut s = shared.lock().unwrap();
                 s.sys.refresh_cpu_all();
                 s.sys.refresh_memory();
-                s.sys.refresh_processes_specifics(ProcessesToUpdate::All, true, process_refresh());
+                let wanted = s.processes_wanted();
+                if wanted {
+                    s.refresh_processes();
+                }
                 if ticks.is_multiple_of(60) {
                     s.users.refresh();
                 }
-                s.elapsed = dt;
                 let sys = &s.sys;
                 let load = System::load_average().map(|l| [l.one, l.five, l.fifteen]).unwrap_or_default();
                 Sample {
@@ -139,11 +179,11 @@ pub fn spawn(
                     disks: Vec::new(),
                     nets: Vec::new(),
                     gpus: Vec::new(),
-                    processes: sys
-                        .processes()
-                        .values()
-                        .filter(|p| p.thread_kind() != Some(ThreadKind::Userland))
-                        .count(),
+                    processes: if wanted {
+                        sys.processes().values().filter(|p| p.thread_kind() != Some(ThreadKind::Userland)).count()
+                    } else {
+                        count_processes()
+                    },
                     threads: total_threads(),
                     uptime: System::uptime().unwrap_or(0),
                     load,

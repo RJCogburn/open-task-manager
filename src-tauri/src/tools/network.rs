@@ -334,8 +334,22 @@ pub struct ProcessSource {
 #[tauri::command]
 pub async fn process_source(state: State<'_, AppState>, pid: u32) -> Result<ProcessSource, String> {
     let (name, command, cwd, user, parent, started) = {
-        let s = state.shared.lock().unwrap();
-        let p = s.sys.process(sysinfo::Pid::from_u32(pid)).ok_or("That process has exited.")?;
+        let mut s = state.shared.lock().unwrap();
+        // Process details may not be kept up to date while no page shows them.
+        let id = sysinfo::Pid::from_u32(pid);
+        s.sys.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::Some(&[id]),
+            false,
+            crate::sampler::process_refresh(),
+        );
+        if let Some(parent) = s.sys.process(id).and_then(|p| p.parent()) {
+            s.sys.refresh_processes_specifics(
+                sysinfo::ProcessesToUpdate::Some(&[parent]),
+                false,
+                crate::sampler::process_refresh(),
+            );
+        }
+        let p = s.sys.process(id).ok_or("That process has exited.")?;
         let parent = p.parent().and_then(|pp| {
             s.sys.process(pp).map(|pp_proc| format!("{} ({})", pp_proc.name().to_string_lossy(), pp.as_u32()))
         });

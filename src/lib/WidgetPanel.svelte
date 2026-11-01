@@ -182,7 +182,6 @@
     border-radius: 14px;
     background: var(--tile);
     border: 1px solid color-mix(in srgb, var(--border-strong) 70%, transparent);
-    backdrop-filter: blur(10px);
   }
 
   /* Clicks go to the tile, which drags the window. */

@@ -32,10 +32,18 @@
   let width = $state(0);
   let hover = $state<number | null>(null);
 
+  // Theme colours, looked up once: asking for computed styles on every redraw
+  // is the slowest part of drawing. Cleared when the theme changes.
+  const colors = new Map<string, string>();
+
   function resolve(color: string): string {
     if (!color.startsWith("var(")) return color;
-    const name = color.slice(4, -1).trim();
-    return getComputedStyle(canvas).getPropertyValue(name).trim() || "#888";
+    let value = colors.get(color);
+    if (value === undefined) {
+      value = getComputedStyle(canvas).getPropertyValue(color.slice(4, -1).trim()).trim() || "#888";
+      colors.set(color, value);
+    }
+    return value;
   }
 
   function top(): number {
@@ -185,7 +193,10 @@
 
   // Theme changes swap the CSS colours; redraw to pick them up.
   $effect(() => {
-    const observer = new MutationObserver(draw);
+    const observer = new MutationObserver(() => {
+      colors.clear();
+      draw();
+    });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => observer.disconnect();
   });

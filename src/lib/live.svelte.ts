@@ -100,12 +100,21 @@ class Live {
 
 export const live = new Live();
 
-/** Calls `fn` now and then every `ms` while the calling component is mounted. */
+/** Calls `fn` now and then every `ms` while the calling component is mounted.
+ * While the window is hidden (in the tray) it pauses, and catches up as soon
+ * as the window shows again. */
 export function poll(fn: () => unknown, ms: () => number) {
   $effect(() => {
     const every = ms();
+    const run = () => {
+      if (!document.hidden) untrack(fn);
+    };
     untrack(fn);
-    const id = setInterval(fn, every);
-    return () => clearInterval(id);
+    const id = setInterval(run, every);
+    document.addEventListener("visibilitychange", run);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", run);
+    };
   });
 }
