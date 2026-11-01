@@ -263,8 +263,8 @@
       </label>
       <p class="faint hint">
         {#if !st.canInstall && st.method === "package-manager"}
-          Installed by your package manager, so it updates there (for example <code>yay -Syu</code>). You will
-          still be told when a new version is out.
+          Installed by your package manager, so it updates there: for the Arch package, <code>git pull</code> and
+          <code>makepkg -si</code> again. You will still be told when a new version is out.
         {:else if st.method === "deb" || st.method === "rpm"}
           Checking asks GitHub whether a newer version is out; nothing about you is sent. Installing a .deb or
           .rpm asks for your password.

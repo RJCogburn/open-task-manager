@@ -37,7 +37,8 @@
   <div class="banner" role="status">
     <span>
       <b>Open Task Manager {offer.version} is available.</b> You have {status.current}.
-      {#if status.method === "package-manager"}Update it with your package manager, for example <code>yay -Syu</code>.{/if}
+      {#if status.method === "package-manager"}Update it the way you installed it: for the Arch package, <code>git pull</code> and
+        <code>makepkg -si</code> again.{/if}
       {#if status.method === "development"}This is a development build; pull the latest code to update.{/if}
     </span>
     <a class="btn" href="{RELEASES}/tag/v{offer.version}" use:external>What's new</a>

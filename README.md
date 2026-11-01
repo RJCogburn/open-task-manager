@@ -23,48 +23,90 @@ No account, no telemetry and no paid tier. The app contacts the internet only
 when you run the internet speed test, and, if you agree to it, to ask GitHub
 once a day whether a newer version is out.
 
-## Requirements
+## Install
 
-Linux, plus the tools for the features you want. The app tells you when one is
-missing and how to install it.
+Download the package for your system from the
+[latest release](https://github.com/RJCogburn/open-task-manager/releases/latest).
+Most PCs need the `amd64` / `x86_64` files; `arm64` / `aarch64` files are for
+ARM computers.
+
+**Ubuntu, Debian, Linux Mint, Pop!_OS**: the `.deb` file
+
+```sh
+sudo apt install ./Open.Task.Manager_*_amd64.deb
+```
+
+**Fedora, openSUSE**: the `.rpm` file
+
+```sh
+sudo dnf install ./Open.Task.Manager-*.x86_64.rpm      # Fedora
+sudo zypper install ./Open.Task.Manager-*.x86_64.rpm   # openSUSE
+```
+
+**Any other distribution**: the `.AppImage` file. It runs without installing:
+
+```sh
+chmod +x Open.Task.Manager_*_amd64.AppImage
+./Open.Task.Manager_*_amd64.AppImage
+```
+
+**Arch, CachyOS, Manjaro**: build the package with the PKGBUILD, which adds a
+launcher entry and icons:
+
+```sh
+git clone https://github.com/RJCogburn/open-task-manager.git
+cd open-task-manager/packaging/arch
+makepkg -si
+```
+
+The packages need Ubuntu 22.04, Debian 12, Fedora 36 or newer.
+
+Flatpak and Snap aren't offered: their sandbox hides other programs'
+processes, which a task manager needs to see.
+
+## Updates
+
+The app tells you when a new version is out, and Settings → Updates can check
+daily and install updates by themselves. The AppImage, `.deb` and `.rpm` update
+themselves; the packages ask for your password. Updates are signed, and the app
+refuses any that aren't.
+
+If you built the Arch package, update by building it again: in your clone, run
+`git pull`, then `makepkg -si` in `packaging/arch`.
+
+## Optional tools
+
+Everything works without these. A few features use them when they're
+installed, and the app tells you when one is missing and how to install it.
 
 | Feature | Needs |
 |---|---|
-| Sensors | `lm_sensors` |
-| Connections, network activity | `iproute2` (installed almost everywhere) |
-| Drive details | `util-linux` (`lsblk`, installed almost everywhere) |
+| Temperatures, fans, voltages | `lm_sensors` (`lm-sensors` on Debian and Ubuntu) |
 | Drive health | `smartmontools` |
-| NVIDIA GPU | the NVIDIA driver (`nvidia-smi`) |
+| NVIDIA graphics cards | the NVIDIA driver (`nvidia-smi`) |
 | Disk benchmark | `fio` |
 | Graphics benchmark | `glmark2` |
-| Internet benchmark | `curl` |
+| Speed test matching speedtest.net | Ookla's [`speedtest`](https://www.speedtest.net/apps/cli) (free, not open source) |
 
-On Arch-based systems: `sudo pacman -S lm_sensors smartmontools fio glmark2`
+The network and drive pages also use `iproute2`, `util-linux` and `curl`, which
+almost every system already has.
 
-## Build and run
+- Arch: `sudo pacman -S lm_sensors smartmontools fio glmark2`
+- Debian, Ubuntu: `sudo apt install lm-sensors smartmontools fio glmark2`
+- Fedora: `sudo dnf install lm_sensors smartmontools fio glmark2`
+
+## Building from source
 
 Needs Rust and Node.js, plus Tauri's
 [Linux prerequisites](https://tauri.app/start/prerequisites/#linux).
 
 ```sh
+git clone https://github.com/RJCogburn/open-task-manager.git
 cd open-task-manager
 npm install
 npm run tauri dev      # run in development
 npm run tauri build    # build .deb, .rpm and AppImage packages
 ```
-
-### Arch, CachyOS, Manjaro and other Arch-based systems
-
-`packaging/arch/PKGBUILD` builds the latest commit as `open-task-manager-git`,
-with a launcher entry and icons:
-
-```sh
-cd packaging/arch
-makepkg -si
-```
-
-Flatpak and Snap aren't offered: their sandbox hides other programs'
-processes, which a task manager needs to see.
 
 In VS Code, open `open-task-manager.code-workspace`. It has tasks to run the
 app, build packages and run all the checks (Ctrl+Shift+B).
@@ -76,10 +118,12 @@ To add a tool of your own, see [CONTRIBUTING.md](CONTRIBUTING.md).
 1. Set the new version in `package.json`, `src-tauri/Cargo.toml` and
    `src-tauri/tauri.conf.json`, then run `npm install` and `cargo build` in
    `src-tauri` so the lock files follow.
-2. Commit, tag and push: `git tag v0.79.0 && git push origin main v0.79.0`.
+2. Commit, tag and push, for example
+   `git tag v0.80.0 && git push origin main v0.80.0`.
 3. GitHub Actions builds the `.deb`, `.rpm` and AppImage for x86_64 and ARM on
-   Ubuntu 22.04 and uploads them to a draft release. Check it on the Releases
-   page, then publish it.
+   Ubuntu 22.04, signs the update files with the `TAURI_SIGNING_PRIVATE_KEY`
+   secret, and uploads everything to a draft release. Open that draft on the
+   Releases page, add the notes, and publish it.
 
 ## How much load it adds
 
@@ -95,7 +139,7 @@ drawing the interface share should be lower.
 | Processes | 1.5% | 6.2% | ~8% |
 
 On a 32-thread CPU, 4.6% of one core is about 0.15% of the whole processor.
-Slower update speeds (2 s or 5 s, bottom left) cut this further. Pages you are
+Slower update speeds (2 s or 5 s, in Settings) cut this further. Pages you are
 not looking at do no work, apart from the shared once-a-second sample that
 keeps the graph history filled.
 
