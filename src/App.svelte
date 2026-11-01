@@ -1,6 +1,8 @@
 <script lang="ts">
-  import type { Component } from "svelte";
+  import { setContext, type Component } from "svelte";
   import Icon from "./lib/Icon.svelte";
+  import UpdateBanner from "./lib/UpdateBanner.svelte";
+  import { updates } from "./lib/updates.svelte";
   import { live } from "./lib/live.svelte";
   import About from "./lib/pages/About.svelte";
   import Settings from "./lib/pages/Settings.svelte";
@@ -27,6 +29,8 @@
   );
   // Settings is not in the page list: it opens from the gear and needs the list itself.
   const page = $derived(current === "settings" ? null : (all.find((p) => p.id === current) ?? all[0]));
+  // The page header finds its tool's sources through this.
+  setContext("otm.tool", () => tools.find((t) => t.id === page?.id));
 
   function go(id: string) {
     current = id;
@@ -37,6 +41,7 @@
 
   let main = $state<HTMLElement>();
   live.start();
+  updates.start();
 
   // Ctrl+1…9 jumps between pages; Ctrl+, opens Settings.
   function onkeydown(e: KeyboardEvent) {
@@ -84,12 +89,14 @@
       <button class="item" aria-current={current === "settings" ? "page" : undefined} onclick={() => go("settings")} title="Settings (Ctrl+,)">
         <span class="icon"><Icon name="settings" /></span>
         <span class="label">Settings</span>
+        {#if updates.offer}<span class="dot" title="An update is available"></span>{/if}
       </button>
       <p class="faint">Free software · GPL-3.0-or-later</p>
     </div>
   </nav>
 
   <main bind:this={main}>
+    <UpdateBanner />
     {#key current}
       {#if page}
         <page.component />
@@ -239,6 +246,13 @@
   .foot {
     padding: 8px 10px 14px;
     border-top: 1px solid var(--border);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
   }
 
   .foot p {

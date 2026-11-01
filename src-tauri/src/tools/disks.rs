@@ -12,7 +12,7 @@ use serde_json::Value;
 use tauri::State;
 
 use crate::AppState;
-use crate::tools;
+use crate::programs;
 
 /// SMART results by drive name. smartctl is tried once per drive without
 /// rights; reading it as administrator replaces the entry.
@@ -89,7 +89,7 @@ pub async fn drives(state: State<'_, AppState>) -> Result<Vec<Drive>, String> {
 }
 
 fn list(cache: &Arc<HealthCache>) -> Result<Vec<Drive>, String> {
-    let out = tools::run(
+    let out = programs::run(
         "lsblk",
         &[
             "--json",
@@ -102,7 +102,7 @@ fn list(cache: &Arc<HealthCache>) -> Result<Vec<Drive>, String> {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
     let json: Value = serde_json::from_slice(&out.stdout).map_err(|e| format!("Could not read lsblk output: {e}"))?;
-    let smartctl = tools::which("smartctl").is_some();
+    let smartctl = programs::which("smartctl").is_some();
     let mut drives = Vec::new();
     for dev in json["blockdevices"].as_array().into_iter().flatten() {
         let name = text(&dev["name"]);
@@ -217,7 +217,7 @@ pub(crate) fn sensor_temp(name: &str) -> Option<f64> {
 }
 
 fn read_smart(name: &str) -> Health {
-    match tools::run("smartctl", &["--json", "-H", "-A", "-i", &format!("/dev/{name}")]) {
+    match programs::run("smartctl", &["--json", "-H", "-A", "-i", &format!("/dev/{name}")]) {
         Ok(out) => match serde_json::from_slice::<Value>(&out.stdout) {
             Ok(json) => parse_smart(&json),
             Err(_) => Health::unknown("smartctl gave no readable answer for this drive.", false),
@@ -301,8 +301,8 @@ fn parse_smart(json: &Value) -> Health {
 pub async fn drive_health_admin(state: State<'_, AppState>) -> Result<(), String> {
     let cache = state.health.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        if tools::which("smartctl").is_none() {
-            return Err(tools::missing("smartctl"));
+        if programs::which("smartctl").is_none() {
+            return Err(programs::missing("smartctl"));
         }
         // Only names the kernel lists as block devices reach the command line.
         let names = disk_names();
@@ -311,7 +311,7 @@ pub async fn drive_health_admin(state: State<'_, AppState>) -> Result<(), String
         }
         let mut args = vec!["sh", "-c", r#"for d; do smartctl --json -H -A -i "/dev/$d"; done"#, "sh"];
         args.extend(names.iter().map(String::as_str));
-        let out = tools::run("pkexec", &args)?;
+        let out = programs::run("pkexec", &args)?;
         if out.stdout.is_empty() {
             return Err(match out.status.code() {
                 Some(126) | Some(127) => "Cancelled.".into(),

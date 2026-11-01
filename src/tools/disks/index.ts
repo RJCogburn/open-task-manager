@@ -14,5 +14,6 @@ export default defineTool({
     const s = live.sample;
     return s ? rate(s.disks.reduce((a, d) => a + d.read + d.write, 0)) : "";
   },
+  sources: ["utilLinux", "smartmontools", "linux"],
   page: Page,
 });

@@ -10,7 +10,7 @@
   let view = $state<"cores" | "total">("cores");
 </script>
 
-<PageHeader title="CPU" subtitle={info?.cpuBrand} sources={["sysinfo", "linux"]}>
+<PageHeader title="CPU" subtitle={info?.cpuBrand}>
   {#snippet actions()}
     <div class="seg" role="group" aria-label="Graph view">
       <button aria-pressed={view === "cores"} onclick={() => (view = "cores")}>Per thread</button>

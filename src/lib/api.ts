@@ -1,5 +1,9 @@
 // Types for what the Rust side sends, and typed wrappers around its commands.
 import { invoke } from "@tauri-apps/api/core";
+import { credits, type Credit } from "./credits";
+
+/** Every program a credit names, for the installed check. */
+const programs = (Object.values(credits) as Credit[]).flatMap((c) => (c.program ? [c.program] : []));
 
 export type DiskIo = { name: string; label: string; read: number; write: number; busy: number };
 export type NetIo = { name: string; rx: number; tx: number; rxTotal: number; txTotal: number };
@@ -240,7 +244,14 @@ export type LogStatus = { config: LogConfig; folder: string; size: number; files
 export type Autostart = { enabled: boolean; minimized: boolean; program: string };
 export type TrayConfig = { enabled: boolean; closeToTray: boolean; showUsage: boolean };
 
-export type ToolStatus ={ program: string; installed: boolean; installHint: string | null };
+export type UpdateStatus = {
+  current: string;
+  available: { version: string; notes: string | null } | null;
+  method: "appimage" | "deb" | "rpm" | "package-manager" | "development";
+  canInstall: boolean;
+};
+
+export type ToolStatus = { program: string; installed: boolean; installHint: string | null };
 
 export const api = {
   systemInfo: () => invoke<SystemInfo>("system_info"),
@@ -265,8 +276,13 @@ export const api = {
   benchGpu: () => invoke<GpuScore>("bench_gpu"),
   benchNetwork: (provider: SpeedProvider) => invoke<NetScore>("bench_network", { provider }),
   installedApps: () => invoke<AppList>("installed_apps"),
-  toolStatus: () => invoke<ToolStatus[]>("tool_status"),
+  /** Whether each program a credit names is installed. */
+  toolStatus: () => invoke<ToolStatus[]>("tool_status", { programs }),
   openFolder: (path: string) => invoke<void>("open_folder", { path }),
+  updateLocal: () => invoke<UpdateStatus>("update_local"),
+  updateCheck: () => invoke<UpdateStatus>("update_check"),
+  updateInstall: () => invoke<void>("update_install"),
+  appRestart: () => invoke<void>("app_restart"),
   netActivity: () => invoke<NetProcess[]>("net_activity"),
   processSource: (pid: number) => invoke<ProcessSource>("process_source", { pid }),
   loggingGet: () => invoke<LogStatus>("logging_get"),

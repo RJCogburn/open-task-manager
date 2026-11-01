@@ -179,8 +179,8 @@ impl Logger {
                     rows.push(format!("{time},{},{t:.1}", g.name.replace(',', " ")));
                 }
             }
-            for name in crate::drives::disk_names() {
-                if let Some(t) = crate::drives::sensor_temp(&name) {
+            for name in crate::tools::disks::disk_names() {
+                if let Some(t) = crate::tools::disks::sensor_temp(&name) {
                     rows.push(format!("{time},{name},{t:.1}"));
                 }
             }

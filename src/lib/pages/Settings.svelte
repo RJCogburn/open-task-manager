@@ -6,6 +6,15 @@
   import { bytes, pct } from "$lib/format";
   import { live } from "$lib/live.svelte";
   import { defaults, resetSettings, settings, type ChartStyle } from "$lib/settings.svelte";
+  import { updates } from "$lib/updates.svelte";
+
+  const installedAs = {
+    appimage: "AppImage",
+    deb: "Debian package (.deb)",
+    rpm: "RPM package (.rpm)",
+    "package-manager": "your package manager",
+    development: "a development build",
+  };
 
   let { pages }: { pages: { id: string; label: string }[] } = $props();
 
@@ -221,6 +230,51 @@
       {#if autostart.enabled}<p class="faint hint">Starts <code>{autostart.program}</code> from <code>~/.config/autostart</code>.</p>{/if}
     {/if}
 
+    <h3 class="sub">Updates</h3>
+    {#if updates.status}
+      {@const st = updates.status}
+      <div class="field">
+        <span>Version {st.current}, installed as {installedAs[st.method]}</span>
+        <button class="btn" disabled={updates.checking || updates.installing} onclick={() => updates.check()}>
+          {#if updates.checking}<span class="spinner"></span> Checking…{:else}Check now{/if}
+        </button>
+      </div>
+      <p class="faint hint">
+        {#if updates.error}
+          <span style:color="var(--bad)">{updates.error}</span>
+        {:else if updates.installed}
+          Update installed; it takes over the next time Open Task Manager starts.
+        {:else if st.available}
+          Version {st.available.version} is available.
+          {#if st.canInstall}<button class="link" onclick={() => updates.install()}>Install it now</button>{/if}
+        {:else if settings.updates.lastCheck}
+          Up to date. Last checked {new Date(settings.updates.lastCheck).toLocaleString()}.
+        {:else}
+          Not checked yet.
+        {/if}
+      </p>
+      <label class="field">
+        <span>Check for updates once a day</span>
+        <input type="checkbox" checked={settings.updates.autoCheck === true} onchange={(e) => (settings.updates.autoCheck = e.currentTarget.checked)} />
+      </label>
+      <label class="field">
+        <span>Install updates automatically</span>
+        <input type="checkbox" bind:checked={settings.updates.autoInstall} disabled={!settings.updates.autoCheck || !st.canInstall} />
+      </label>
+      <p class="faint hint">
+        {#if !st.canInstall && st.method === "package-manager"}
+          Installed by your package manager, so it updates there (for example <code>yay -Syu</code>). You will
+          still be told when a new version is out.
+        {:else if st.method === "deb" || st.method === "rpm"}
+          Checking asks GitHub whether a newer version is out; nothing about you is sent. Installing a .deb or
+          .rpm asks for your password.
+        {:else}
+          Checking asks GitHub whether a newer version is out; nothing about you is sent. Updates are signed and
+          checked before they install.
+        {/if}
+      </p>
+    {/if}
+
     <h3 class="sub">Benchmarks</h3>
     <div class="field">
       <span>Internet speed test</span>
@@ -290,12 +344,21 @@
 </div>
 
 <div class="row" style="margin-top: 18px; justify-content: flex-end">
-  <button class="btn" onclick={reset} disabled={JSON.stringify({ ...settings, lastPage: "" }) === JSON.stringify({ ...defaults, lastPage: "" })}>
+  <button class="btn" onclick={reset} disabled={JSON.stringify({ ...settings, lastPage: "", updates: null }) === JSON.stringify({ ...defaults, lastPage: "", updates: null })}>
     Reset to defaults
   </button>
 </div>
 
 <style>
+  .link {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--accent);
+    cursor: pointer;
+    font: inherit;
+  }
+
   .cols {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));

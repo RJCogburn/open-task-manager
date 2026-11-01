@@ -58,7 +58,7 @@
   }
 </script>
 
-<PageHeader title="Connections" subtitle="Which programs are talking on the network, and who can reach them" sources={["iproute2"]}>
+<PageHeader title="Connections" subtitle="Which programs are talking on the network, and who can reach them">
   {#snippet actions()}
     <button class="btn" onclick={() => (paused = !paused)} aria-pressed={paused}>{paused ? "Resume" : "Pause"}</button>
   {/snippet}

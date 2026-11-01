@@ -21,7 +21,6 @@
 <PageHeader
   title="Overview"
   subtitle={info ? `${info.os} · Linux ${info.kernel} · up ${duration(s?.uptime ?? 0)}` : ""}
-  sources={["sysinfo", "linux", "nvidiaSmi"]}
 />
 
 {#if !s}

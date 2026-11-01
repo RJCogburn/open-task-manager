@@ -61,7 +61,6 @@
 <PageHeader
   title="Power & Thermals"
   subtitle="Temperatures, fans, voltages, clocks and power draw"
-  sources={["lmSensors", "linux", "nvidiaSmi"]}
 />
 
 {#if s}

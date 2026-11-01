@@ -28,7 +28,6 @@
 <PageHeader
   title="Benchmarks"
   subtitle="Measure how fast this computer is. Close heavy programs first for steady numbers."
-  sources={["fio", "glmark2", "ookla", "curl", "cloudflare"]}
 />
 
 {#snippet status(test: Test, program?: string)}

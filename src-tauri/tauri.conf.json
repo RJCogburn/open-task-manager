@@ -60,5 +60,13 @@
         ]
       }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc0MTc0MjE0NTEyRDFBMkUKUldRdUdpMVJGRUlYZEZWNnU4cE9reDZscnpHYStTV0VRaFBpc2g3cy8zZkF4NnF1N3R5bUpCOHQK",
+      "endpoints": [
+        "https://github.com/RJCogburn/open-task-manager/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

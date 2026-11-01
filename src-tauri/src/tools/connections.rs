@@ -3,7 +3,7 @@
 
 use serde::Serialize;
 
-use crate::tools;
+use crate::programs;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,7 +24,7 @@ pub struct Connection {
 #[tauri::command]
 pub async fn connections() -> Result<Vec<Connection>, String> {
     tauri::async_runtime::spawn_blocking(|| {
-        let out = tools::run("ss", &["-tunapH"])?;
+        let out = programs::run("ss", &["-tunapH"])?;
         if !out.status.success() {
             return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
         }

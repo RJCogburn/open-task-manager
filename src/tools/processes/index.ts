@@ -9,5 +9,6 @@ export default defineTool({
   order: 20,
   icon: "M4 6h16M4 12h16M4 18h10",
   value: () => (live.sample ? `${live.sample.processes}` : ""),
+  sources: ["sysinfo", "polkit"],
   page: Page,
 });

@@ -35,13 +35,14 @@ export default defineTool({
   icon: "M3 7h16v10H3zM21 10v4M6 10v4",  // SVG path on a 24×24 grid
   color: "var(--temp)",     // optional
   value: () => pct(live.sample?.cpu),     // optional live reading beside the name
+  sources: ["linux"],       // projects the data comes from, by id in src/lib/credits.ts
   page: Page,
 });
 ```
 
 `Battery.svelte` is the page. Import shared code through `$lib`:
 
-- `$lib/PageHeader.svelte`: the page title, with links to the projects your data comes from
+- `$lib/PageHeader.svelte`: the page title. It links your tool's `sources` by itself.
 - `$lib/Chart.svelte`: live graphs that follow the user's graph settings
 - `$lib/live.svelte`: the latest sample (`live.sample`), history for graphs (`live.history(key)`) and `poll()` for refreshing your own data
 - `$lib/format`: `bytes`, `rate`, `netRate`, `pct`, `temp` and more. Use `temp` and `netRate` so the user's unit settings apply.
@@ -54,11 +55,13 @@ Copy an existing tool that is close to yours; `src/tools/sensors` and
 
 If the page needs data the live sample doesn't have:
 
-1. Add `src-tauri/src/<your_tool>.rs` with `#[tauri::command]` functions. Use
+1. Add `src-tauri/src/tools/<your_tool>.rs`, named like your folder in
+   `src/tools/` (with `_` for `-`), with `#[tauri::command]` functions. Use
    `tauri::async_runtime::spawn_blocking` for anything slow, so the window
    stays responsive.
-2. Add `mod <your_tool>;` and your commands to the `generate_handler!` list in
-   `src-tauri/src/lib.rs`. Tauri needs every command in that one list.
+2. Add `pub mod <your_tool>;` to `src-tauri/src/tools.rs`, and your commands
+   to the tools part of the `generate_handler!` list in `src-tauri/src/lib.rs`.
+   Tauri needs every command in that one list.
 3. If the tool keeps state between calls, add a field to `AppState` in
    `lib.rs`.
 4. Add a typed wrapper for each command to `api` in `src/lib/api.ts`.
@@ -67,19 +70,21 @@ If the page needs data the live sample doesn't have:
 
 If the tool runs another program (like `sensors`, `ss` or `smartctl`):
 
-- Run it with `tools::run`, which reports a missing program with install
+- Run it with `programs::run`, which reports a missing program with install
   instructions.
-- Add the program's package names to `install_hint` and the program to
-  `TOOLS` in `src-tauri/src/tools.rs`.
-- Credit the project in `src/lib/credits.ts` and `CREDITS.md`, and list it in
-  your page's `PageHeader` `sources`.
+- Credit the project in `src/lib/credits.ts`, with the program's name in
+  `program`, and in `CREDITS.md`. Add its id to your tool's `sources`. The page
+  header, the About page and the "is it installed?" check all follow from that.
+- Add the program's package names for each distribution to `install_hint` in
+  `src-tauri/src/programs.rs`.
 
 Prefer reading `/proc` and `/sys` directly when that's simple; it is faster and
 needs nothing installed.
 
 ### Ground rules
 
-- Nothing leaves the computer unless the user starts it (like the speed test).
+- Nothing leaves the computer unless the user starts it (like the speed test) or
+  has agreed to it (like the daily update check).
 - Anything that needs administrator rights asks through polkit (`pkexec`),
   and only when the user clicks.
 - Say what's happening in plain words. "Needs administrator rights to read

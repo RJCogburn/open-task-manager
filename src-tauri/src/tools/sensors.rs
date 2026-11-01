@@ -10,7 +10,7 @@ use serde_json::Value;
 use tauri::State;
 
 use crate::AppState;
-use crate::tools;
+use crate::programs;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,7 +55,7 @@ pub async fn sensors(state: State<'_, AppState>) -> Result<SensorReport, String>
 }
 
 fn read_lm_sensors() -> Result<Vec<Chip>, String> {
-    let out = tools::run("sensors", &["-j"])?;
+    let out = programs::run("sensors", &["-j"])?;
     // sensors exits non-zero when one chip fails to read but still prints the rest.
     let json: Value = serde_json::from_slice(&out.stdout).map_err(|e| format!("Could not read sensors output: {e}"))?;
     let Value::Object(chips) = json else { return Ok(Vec::new()) };

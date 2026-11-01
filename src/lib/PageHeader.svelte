@@ -1,6 +1,8 @@
-<!-- A page title with links to the tools that page's data comes from. -->
+<!-- A page title with links to the projects that page's data comes from: a
+     tool's own sources, or the ones passed in. -->
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import { getContext, type Snippet } from "svelte";
+  import type { Tool } from "./tool";
   import { credits, type CreditId } from "./credits";
   import { external } from "./link";
 
@@ -10,6 +12,9 @@
     sources = [],
     actions,
   }: { title: string; subtitle?: string; sources?: CreditId[]; actions?: Snippet } = $props();
+
+  const tool = getContext<(() => Tool | undefined) | undefined>("otm.tool");
+  const shown = $derived(sources.length ? sources : (tool?.()?.sources ?? []));
 </script>
 
 <header>
@@ -18,10 +23,10 @@
     {#if subtitle}<p class="muted">{subtitle}</p>{/if}
   </div>
   <div class="right">
-    {#if sources.length}
+    {#if shown.length}
       <div class="sources" aria-label="Data sources">
         <span class="faint">Powered by</span>
-        {#each sources as id (id)}
+        {#each shown as id (id)}
           {@const c = credits[id]}
           <a
             class="chip"

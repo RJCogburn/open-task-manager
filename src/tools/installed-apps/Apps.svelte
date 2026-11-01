@@ -37,7 +37,7 @@
   const sourceNames: Record<string, string> = { pacman: "pacman", flatpak: "Flatpak", dpkg: "dpkg", rpm: "rpm" };
 </script>
 
-<PageHeader title="Installed Apps" subtitle="Everything your package managers have installed" sources={["pacman", "flatpak", "dpkg", "rpm"]} />
+<PageHeader title="Installed Apps" subtitle="Everything your package managers have installed" />
 
 <div class="toolbar">
   <input class="input" type="search" placeholder="Search name or description" bind:value={query} style="width: 300px" aria-label="Search apps" />

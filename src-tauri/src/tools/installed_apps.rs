@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::tools;
+use crate::programs;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,15 +33,15 @@ pub async fn installed_apps() -> Result<AppList, String> {
     tauri::async_runtime::spawn_blocking(|| {
         let mut apps = Vec::new();
         let mut sources = Vec::new();
-        if tools::which("pacman").is_some() {
+        if programs::which("pacman").is_some() {
             apps.extend(pacman()?);
             sources.push("pacman");
         }
-        if tools::which("flatpak").is_some() {
+        if programs::which("flatpak").is_some() {
             apps.extend(flatpak());
             sources.push("flatpak");
         }
-        if tools::which("dpkg-query").is_some() && tools::which("pacman").is_none() {
+        if programs::which("dpkg-query").is_some() && programs::which("pacman").is_none() {
             apps.extend(dpkg());
             sources.push("dpkg");
         }
@@ -49,7 +49,7 @@ pub async fn installed_apps() -> Result<AppList, String> {
         let rpm_db = ["/usr/lib/sysimage/rpm", "/var/lib/rpm"].iter().any(|d| {
             std::path::Path::new(d).join("rpmdb.sqlite").exists() || std::path::Path::new(d).join("Packages").exists()
         });
-        if rpm_db && tools::which("rpm").is_some() && sources.iter().all(|s| *s == "flatpak") {
+        if rpm_db && programs::which("rpm").is_some() && sources.iter().all(|s| *s == "flatpak") {
             apps.extend(rpm());
             sources.push("rpm");
         }

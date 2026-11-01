@@ -25,6 +25,15 @@ export type Settings = {
   rememberBenchmarks: boolean;
   /** Which service the internet speed test uses; "auto" prefers Ookla when installed. */
   speedTest: "auto" | "ookla" | "cloudflare";
+  updates: {
+    /** null until the user has been asked; checking contacts GitHub. */
+    autoCheck: boolean | null;
+    autoInstall: boolean;
+    /** When the last check ran, in ms since 1970. */
+    lastCheck: number;
+    /** A version the user chose to skip the reminder for. */
+    dismissed: string;
+  };
 };
 
 const KEY = "otm.settings";
@@ -41,12 +50,18 @@ export const defaults: Settings = {
   showIdleInterfaces: false,
   rememberBenchmarks: true,
   speedTest: "auto",
+  updates: { autoCheck: null, autoInstall: false, lastCheck: 0, dismissed: "" },
 };
 
 function load(): Settings {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
-    return { ...defaults, ...saved, chart: { ...defaults.chart, ...saved.chart } };
+    return {
+      ...defaults,
+      ...saved,
+      chart: { ...defaults.chart, ...saved.chart },
+      updates: { ...defaults.updates, ...saved.updates },
+    };
   } catch {
     return structuredClone(defaults);
   }
@@ -59,5 +74,6 @@ $effect.root(() => {
 });
 
 export function resetSettings() {
-  Object.assign(settings, structuredClone(defaults), { lastPage: settings.lastPage });
+  // Keeps the update choice and check history: they're answers, not preferences to reset.
+  Object.assign(settings, structuredClone(defaults), { lastPage: settings.lastPage, updates: settings.updates });
 }

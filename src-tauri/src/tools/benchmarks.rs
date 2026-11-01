@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::tools;
+use crate::programs;
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
@@ -99,8 +99,8 @@ pub struct DiskResult {
 #[tauri::command]
 pub async fn bench_disk(folder: String) -> Result<Vec<DiskResult>, String> {
     blocking(move || {
-        if tools::which("fio").is_none() {
-            return Err(tools::missing("fio"));
+        if programs::which("fio").is_none() {
+            return Err(programs::missing("fio"));
         }
         let file = std::path::Path::new(&folder).join(".open-task-manager-bench.tmp");
         let file_arg = format!("--filename={}", file.display());
@@ -136,7 +136,7 @@ fn run_fio(file_arg: &str, engine: &str) -> Result<Vec<DiskResult>, String> {
         args.extend_from_slice(job);
         args.push("--stonewall");
     }
-    let out = tools::run("fio", &args)?;
+    let out = programs::run("fio", &args)?;
     if !out.status.success() {
         return Err(format!("fio failed: {}", String::from_utf8_lossy(&out.stderr).trim()));
     }
@@ -170,7 +170,7 @@ pub struct GpuScore {
 #[tauri::command]
 pub async fn bench_gpu() -> Result<GpuScore, String> {
     blocking(|| {
-        let out = tools::run("glmark2", &["--off-screen"])?;
+        let out = programs::run("glmark2", &["--off-screen"])?;
         let text = String::from_utf8_lossy(&out.stdout);
         let find = |key: &str| text.lines().find_map(|l| l.split_once(key).map(|(_, v)| v.trim().to_string()));
         let score = find("glmark2 Score:").and_then(|s| s.parse().ok()).ok_or_else(|| {
@@ -203,14 +203,14 @@ pub async fn bench_network(provider: String) -> Result<NetScore, String> {
     let ookla = match provider.as_str() {
         "ookla" => true,
         "cloudflare" => false,
-        _ => tools::which("speedtest").is_some(),
+        _ => programs::which("speedtest").is_some(),
     };
     if ookla { blocking(ookla_test).await } else { blocking(cloudflare_test).await }
 }
 
 /// Ookla's own command-line client, which picks a nearby speedtest.net server.
 fn ookla_test() -> Result<NetScore, String> {
-    let out = tools::run("speedtest", &["--format=json", "--progress=no", "--accept-license", "--accept-gdpr"])?;
+    let out = programs::run("speedtest", &["--format=json", "--progress=no", "--accept-license", "--accept-gdpr"])?;
     parse_ookla(&out.stdout, &out.stderr)
 }
 
@@ -260,7 +260,7 @@ fn cloudflare_test() -> Result<NetScore, String> {
         // TCP connection setup takes one round trip, without any server work in it.
         let mut latency = f64::MAX;
         for _ in 0..5 {
-            let out = tools::run(
+            let out = programs::run(
                 "curl",
                 &[
                     "-s",
@@ -304,8 +304,8 @@ fn cloudflare_test() -> Result<NetScore, String> {
 /// upload ends. Every response is checked, so a refused test is reported
 /// rather than measured as a slow line.
 fn throughput(upload: bool) -> Result<f64, String> {
-    if tools::which("curl").is_none() {
-        return Err(tools::missing("curl"));
+    if programs::which("curl").is_none() {
+        return Err(programs::missing("curl"));
     }
     let moved = Arc::new(AtomicU64::new(0));
     let stop = Arc::new(AtomicBool::new(false));

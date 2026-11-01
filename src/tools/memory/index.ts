@@ -14,5 +14,6 @@ export default defineTool({
     const s = live.sample;
     return s ? pct((s.memUsed / s.memTotal) * 100) : "";
   },
+  sources: ["sysinfo", "linux"],
   page: Page,
 });

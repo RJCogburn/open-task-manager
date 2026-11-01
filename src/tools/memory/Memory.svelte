@@ -14,7 +14,7 @@
   }, () => Math.max(2000, live.settings.intervalMs));
 </script>
 
-<PageHeader title="Memory" subtitle={s ? `${bytes(s.memTotal)} installed` : ""} sources={["sysinfo", "linux"]} />
+<PageHeader title="Memory" subtitle={s ? `${bytes(s.memTotal)} installed` : ""} />
 
 {#if s}
   <section class="card">

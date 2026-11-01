@@ -2,8 +2,9 @@
   import { getVersion } from "@tauri-apps/api/app";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, type ToolStatus } from "$lib/api";
-  import { credits, groupTitles, type Credit, type CreditGroup } from "$lib/credits";
+  import { credits, groupTitles, type Credit, type CreditGroup, type CreditId } from "$lib/credits";
   import { external } from "$lib/link";
+  import { tools as allTools } from "../../tools/registry";
 
   let tools = $state<ToolStatus[]>([]);
   let version = $state("");
@@ -11,7 +12,9 @@
   api.toolStatus().then((t) => (tools = t));
 
   const groups = Object.keys(groupTitles) as CreditGroup[];
-  const all: Credit[] = Object.values(credits);
+  const all = Object.entries(credits) as [CreditId, Credit][];
+  /** The tools that name a credit among their sources. */
+  const usedBy = (id: CreditId) => allTools.filter((t) => t.sources?.includes(id)).map((t) => t.label);
   const installed = (c: Credit) => tools.find((t) => t.program === c.program);
 </script>
 
@@ -36,17 +39,21 @@
 </section>
 
 {#each groups as group (group)}
-  {@const items = all.filter((c) => c.group === group)}
+  {@const items = all.filter(([, c]) => c.group === group)}
   <h2 class="group">{groupTitles[group].title}</h2>
   <p class="muted blurb">{groupTitles[group].blurb}</p>
   <div class="table-wrap">
     <table class="data">
       <tbody>
-        {#each items as c (c.name)}
+        {#each items as [id, c] (id)}
+          {@const users = usedBy(id)}
           {@const t = installed(c)}
           <tr>
             <td class="name"><a href={c.url} use:external>{c.name}</a></td>
-            <td class="role">{c.role}</td>
+            <td class="role">
+              {c.role}
+              {#if users.length}<div class="faint used">Used by {users.join(", ")}</div>{/if}
+            </td>
             <td><span class="badge" class:warn={c.proprietary}>{c.license}</span></td>
             <td class="num">
               {#if t}
@@ -68,6 +75,11 @@
 </p>
 
 <style>
+  .used {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
   .version {
     font-size: 13px;
     font-weight: 500;

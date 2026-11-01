@@ -82,7 +82,6 @@
 <PageHeader
   title="Disks"
   subtitle="Each drive, how full it is, how healthy it is, and how busy"
-  sources={["utilLinux", "smartmontools", "linux"]}
 />
 
 {#if error}<div class="notice bad" style="margin-bottom: 14px">{error}</div>{/if}

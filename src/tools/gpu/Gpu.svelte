@@ -11,7 +11,6 @@
 <PageHeader
   title="GPU"
   subtitle="Load, video memory, temperature and power"
-  sources={["nvidiaSmi", "linux", "pciutils"]}
 />
 
 {#if s && s.gpus.length === 0}

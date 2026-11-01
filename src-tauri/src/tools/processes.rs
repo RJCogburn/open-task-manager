@@ -6,7 +6,7 @@ use serde::Serialize;
 use tauri::State;
 
 use crate::AppState;
-use crate::tools;
+use crate::programs;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -134,7 +134,7 @@ pub async fn admin_action(pid: u32, action: String, nice: Option<i32>) -> Result
         _ => return Err(format!("Unknown action {action}")),
     };
     tauri::async_runtime::spawn_blocking(move || {
-        let out = tools::run("pkexec", &args.iter().map(String::as_str).collect::<Vec<_>>())?;
+        let out = programs::run("pkexec", &args.iter().map(String::as_str).collect::<Vec<_>>())?;
         if out.status.success() {
             Ok(())
         } else if out.status.code() == Some(126) {

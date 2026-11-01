@@ -16,10 +16,12 @@ system already has in one window, with live graphs.
 - **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (curl + Cloudflare)
 - **Installed Apps**: pacman, dpkg, rpm and Flatpak packages by size
 - **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
+- **Updates**: tells you when a new version is out; installs it on request or automatically (signed updates for the AppImage, .deb and .rpm)
 - **Settings**: graph style, units, start page, start at login, and logging chosen hardware to CSV files
 
 No account, no telemetry and no paid tier. The app contacts the internet only
-when you run the internet benchmark.
+when you run the internet speed test, and, if you agree to it, to ask GitHub
+once a day whether a newer version is out.
 
 ## Requirements
 

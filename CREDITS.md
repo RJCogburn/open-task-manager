@@ -36,11 +36,12 @@ not copied into it, so their licenses apply to them, not to this app.
 
 ## Online services
 
-Contacted only when you start the internet benchmark.
+Contacted only when you start the speed test, or check for updates (daily only if you agreed to it).
 
 | Service | Used for | Terms |
 |---|---|---|
 | [Cloudflare Speed Test](https://speed.cloudflare.com/) | Download and upload server for the internet benchmark | Online service (not open source) |
+| [GitHub Releases](https://github.com/RJCogburn/open-task-manager/releases) | Where new versions are published and checked for | Online service (not open source) |
 
 ## Ideas borrowed from
 

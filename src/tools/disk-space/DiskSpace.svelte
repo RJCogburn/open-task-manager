@@ -15,7 +15,7 @@
   const scanning = $derived(scan.running);
 </script>
 
-<PageHeader title="Disk Space" subtitle="Find what is filling up your drives" sources={["ncdu", "filelight"]} />
+<PageHeader title="Disk Space" subtitle="Find what is filling up your drives" />
 
 <section class="card">
   <form class="row" onsubmit={(e) => (e.preventDefault(), scan.start())}>

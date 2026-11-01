@@ -7,5 +7,6 @@ export default defineTool({
   section: "monitor",
   order: 10,
   icon: "M3 13h7V3H3zM14 21h7v-10h-7zM3 21h7v-5H3zM14 7h7V3h-7z",
+  sources: ["sysinfo", "linux", "nvidiaSmi"],
   page: Page,
 });

@@ -11,5 +11,6 @@ export default defineTool({
   icon: "M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0zM12 9v8",
   color: "var(--temp)",
   value: () => temp(live.sample?.cpuTemp),
+  sources: ["lmSensors", "linux", "nvidiaSmi"],
   page: Page,
 });

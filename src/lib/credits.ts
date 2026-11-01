@@ -163,6 +163,14 @@ export const credits = {
     group: "service",
     proprietary: true,
   },
+  githubReleases: {
+    name: "GitHub Releases",
+    role: "Where new versions are published and checked for",
+    license: "Online service (not open source)",
+    url: "https://github.com/RJCogburn/open-task-manager/releases",
+    group: "service",
+    proprietary: true,
+  },
   ncdu: {
     name: "ncdu",
     role: "The disk space scanner works the way ncdu does: real disk usage, one filesystem, hard links counted once",
@@ -257,7 +265,10 @@ export const groupTitles: Record<CreditGroup, { title: string; blurb: string }> 
     blurb: "Open Task Manager starts these programs and shows what they report. They are not copied into it.",
   },
   reads: { title: "Data it reads", blurb: "Read straight from the files the kernel provides." },
-  service: { title: "Online services", blurb: "Contacted only when you start the internet benchmark." },
+  service: {
+    title: "Online services",
+    blurb: "Contacted only when you start the speed test, or check for updates (daily only if you agreed to it).",
+  },
   inspired: {
     title: "Ideas borrowed from",
     blurb: "No code from these projects is included, but they shaped how parts of this app work.",

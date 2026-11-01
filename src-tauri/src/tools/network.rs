@@ -18,8 +18,8 @@ use serde::Serialize;
 use tauri::State;
 
 use crate::AppState;
-use crate::connections::{is_loopback, parse_line};
-use crate::tools;
+use crate::programs;
+use crate::tools::connections::{is_loopback, parse_line};
 
 /// Bytes received and sent per socket.
 type Counters = HashMap<String, (u64, u64)>;
@@ -72,14 +72,14 @@ pub async fn net_activity(state: State<'_, AppState>) -> Result<Vec<NetProcess>,
 }
 
 fn activity(net: &NetState) -> Result<Vec<NetProcess>, String> {
-    let out = tools::run("ss", &["-tuanpiH"])?;
+    let out = programs::run("ss", &["-tuanpiH"])?;
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
     let text = String::from_utf8_lossy(&out.stdout);
 
     // A socket's line, then for TCP an indented line of counters.
-    let mut sockets: Vec<(crate::connections::Connection, Option<(u64, u64)>)> = Vec::new();
+    let mut sockets: Vec<(crate::tools::connections::Connection, Option<(u64, u64)>)> = Vec::new();
     for line in text.lines() {
         if line.starts_with(char::is_whitespace) {
             if let Some(last) = sockets.last_mut() {
@@ -285,13 +285,13 @@ fn classify(exe: &str) -> Origin {
 }
 
 fn package_manager() -> Option<&'static str> {
-    ["pacman", "dpkg-query", "rpm"].into_iter().find(|p| tools::which(p).is_some())
+    ["pacman", "dpkg-query", "rpm"].into_iter().find(|p| programs::which(p).is_some())
 }
 
 /// The package that installed a file, as "name version".
 pub(crate) fn package_owner(path: &str) -> Option<String> {
     let text = |program: &str, args: &[&str]| {
-        tools::run(program, args)
+        programs::run(program, args)
             .ok()
             .filter(|o| o.status.success())
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())

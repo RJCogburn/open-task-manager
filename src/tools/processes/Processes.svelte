@@ -159,7 +159,7 @@
   }
 </script>
 
-<PageHeader title="Processes" subtitle="{rows.length.toLocaleString()} shown of {list.length.toLocaleString()} running" sources={["sysinfo", "polkit"]} />
+<PageHeader title="Processes" subtitle="{rows.length.toLocaleString()} shown of {list.length.toLocaleString()} running" />
 
 <div class="toolbar">
   <input class="input search" type="search" placeholder="Search by name, command or PID" bind:value={query} aria-label="Search processes" />

@@ -93,7 +93,7 @@
   const speedError = $derived(benchmarks.errors.network);
 </script>
 
-<PageHeader title="Network" subtitle="Traffic on each network interface, and the programs behind it" sources={["sysinfo", "iproute2", "ookla", "cloudflare"]}>
+<PageHeader title="Network" subtitle="Traffic on each network interface, and the programs behind it">
   {#snippet actions()}
     {#if hidden > 0 || settings.showIdleInterfaces}
       <label class="row muted" style="font-size: 13px">

@@ -12,7 +12,7 @@ use std::thread;
 
 use serde::Serialize;
 
-use crate::tools;
+use crate::programs;
 
 #[derive(Serialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
@@ -46,7 +46,7 @@ struct AmdCard {
 impl GpuMonitor {
     pub fn start() -> Self {
         let nvidia = Arc::new(Mutex::new(Vec::new()));
-        if tools::which("nvidia-smi").is_some() {
+        if programs::which("nvidia-smi").is_some() {
             start_nvidia_smi(nvidia.clone());
         }
         Self { nvidia, amd: find_amd_cards() }
@@ -139,7 +139,7 @@ fn amd_name(device: &Path) -> String {
         .ok()
         .and_then(|u| u.lines().find_map(|l| l.strip_prefix("PCI_SLOT_NAME=").map(str::to_string)));
     let from_lspci = slot.and_then(|slot| {
-        let out = tools::run("lspci", &["-mm", "-s", &slot]).ok()?;
+        let out = programs::run("lspci", &["-mm", "-s", &slot]).ok()?;
         // Quoted fields: class, vendor, device, …
         let text = String::from_utf8_lossy(&out.stdout).into_owned();
         text.split('"').nth(5).map(str::to_string)
