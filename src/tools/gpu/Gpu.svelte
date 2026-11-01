@@ -1,9 +1,9 @@
 <script lang="ts">
-  import Chart from "../Chart.svelte";
-  import Gauge from "../Gauge.svelte";
-  import PageHeader from "../PageHeader.svelte";
-  import { bytes, temp, pct, watts } from "../format";
-  import { live } from "../live.svelte";
+  import Chart from "$lib/Chart.svelte";
+  import Gauge from "$lib/Gauge.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { bytes, temp, pct, watts } from "$lib/format";
+  import { live } from "$lib/live.svelte";
 
   const s = $derived(live.sample);
 </script>

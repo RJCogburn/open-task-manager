@@ -1,9 +1,9 @@
 <script lang="ts">
   import { getVersion } from "@tauri-apps/api/app";
-  import PageHeader from "../PageHeader.svelte";
-  import { api, type ToolStatus } from "../api";
-  import { credits, groupTitles, type Credit, type CreditGroup } from "../credits";
-  import { external } from "../link";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, type ToolStatus } from "$lib/api";
+  import { credits, groupTitles, type Credit, type CreditGroup } from "$lib/credits";
+  import { external } from "$lib/link";
 
   let tools = $state<ToolStatus[]>([]);
   let version = $state("");

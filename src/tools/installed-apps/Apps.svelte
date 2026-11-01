@@ -1,8 +1,8 @@
 <script lang="ts">
-  import PageHeader from "../PageHeader.svelte";
-  import { api, type App } from "../api";
-  import { bytes, count } from "../format";
-  import { external } from "../link";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, type App } from "$lib/api";
+  import { bytes, count } from "$lib/format";
+  import { external } from "$lib/link";
 
   let apps = $state<App[]>([]);
   let sources = $state<string[]>([]);

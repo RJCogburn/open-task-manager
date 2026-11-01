@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Chart from "../Chart.svelte";
-  import PageHeader from "../PageHeader.svelte";
-  import { temp, duration, ghz, pct } from "../format";
-  import { live } from "../live.svelte";
+  import Chart from "$lib/Chart.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { temp, duration, ghz, pct } from "$lib/format";
+  import { live } from "$lib/live.svelte";
 
   const s = $derived(live.sample);
   const info = $derived(live.info);

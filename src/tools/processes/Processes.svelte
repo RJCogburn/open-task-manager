@@ -1,8 +1,8 @@
 <script lang="ts">
-  import PageHeader from "../PageHeader.svelte";
-  import { api, parseError, type Proc } from "../api";
-  import { bytes, heat, pct, rate } from "../format";
-  import { live, poll } from "../live.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, parseError, type Proc } from "$lib/api";
+  import { bytes, heat, pct, rate } from "$lib/format";
+  import { live, poll } from "$lib/live.svelte";
 
   type Key = "name" | "pid" | "user" | "cpu" | "memory" | "disk" | "status" | "nice";
   const columns: { key: Key; label: string; num?: boolean; width?: number }[] = [

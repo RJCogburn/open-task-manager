@@ -1,10 +1,10 @@
 <script lang="ts">
-  import PageHeader from "../PageHeader.svelte";
-  import ScanResults from "../ScanResults.svelte";
-  import { api } from "../api";
-  import { bytes, count } from "../format";
-  import { live } from "../live.svelte";
-  import { scan } from "../scan.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import ScanResults from "$lib/ScanResults.svelte";
+  import { api } from "$lib/api";
+  import { bytes, count } from "$lib/format";
+  import { live } from "$lib/live.svelte";
+  import { scan } from "$lib/scan.svelte";
 
   const home = $derived(live.info?.homeDir ?? "/");
   $effect(() => {

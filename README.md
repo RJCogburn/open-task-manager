@@ -65,6 +65,8 @@ processes, which a task manager needs to see.
 In VS Code, open `open-task-manager.code-workspace`. It has tasks to run the
 app, build packages and run all the checks (Ctrl+Shift+B).
 
+To add a tool of your own, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Making a release
 
 1. Set the new version in `package.json`, `src-tauri/Cargo.toml` and

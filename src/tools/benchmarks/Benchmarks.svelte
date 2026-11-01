@@ -1,11 +1,11 @@
 <script lang="ts">
-  import PageHeader from "../PageHeader.svelte";
-  import { api, type ToolStatus } from "../api";
-  import SpeedResult from "../SpeedResult.svelte";
-  import { benchmarks, type Results, type Test } from "../benchmarks.svelte";
-  import { settings } from "../settings.svelte";
-  import { bytes } from "../format";
-  import { live } from "../live.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, type ToolStatus } from "$lib/api";
+  import SpeedResult from "$lib/SpeedResult.svelte";
+  import { benchmarks, type Results, type Test } from "$lib/benchmarks.svelte";
+  import { settings } from "$lib/settings.svelte";
+  import { bytes } from "$lib/format";
+  import { live } from "$lib/live.svelte";
 
   const b = benchmarks;
   let tools = $state<ToolStatus[]>([]);

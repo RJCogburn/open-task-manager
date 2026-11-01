@@ -1,8 +1,8 @@
 <script lang="ts">
-  import PageHeader from "../PageHeader.svelte";
-  import { api, parseError, type Connection } from "../api";
-  import { poll } from "../live.svelte";
-  import { settings } from "../settings.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, parseError, type Connection } from "$lib/api";
+  import { poll } from "$lib/live.svelte";
+  import { settings } from "$lib/settings.svelte";
 
   let list = $state<Connection[]>([]);
   let error = $state("");

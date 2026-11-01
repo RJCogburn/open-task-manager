@@ -1,9 +1,9 @@
 <script lang="ts">
-  import Chart from "../Chart.svelte";
-  import PageHeader from "../PageHeader.svelte";
-  import { api, type Proc } from "../api";
-  import { bytes, pct } from "../format";
-  import { live, poll } from "../live.svelte";
+  import Chart from "$lib/Chart.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, type Proc } from "$lib/api";
+  import { bytes, pct } from "$lib/format";
+  import { live, poll } from "$lib/live.svelte";
 
   const s = $derived(live.sample);
   const used = $derived(s ? (s.memUsed / s.memTotal) * 100 : 0);

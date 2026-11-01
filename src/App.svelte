@@ -2,50 +2,23 @@
   import type { Component } from "svelte";
   import Icon from "./lib/Icon.svelte";
   import { live } from "./lib/live.svelte";
-  import { pct, rate, temp } from "./lib/format";
-  import Overview from "./lib/pages/Overview.svelte";
-  import Processes from "./lib/pages/Processes.svelte";
-  import Cpu from "./lib/pages/Cpu.svelte";
-  import Memory from "./lib/pages/Memory.svelte";
-  import Disks from "./lib/pages/Disks.svelte";
-  import Network from "./lib/pages/Network.svelte";
-  import Gpu from "./lib/pages/Gpu.svelte";
-  import Sensors from "./lib/pages/Sensors.svelte";
-  import Connections from "./lib/pages/Connections.svelte";
-  import DiskSpace from "./lib/pages/DiskSpace.svelte";
-  import Benchmarks from "./lib/pages/Benchmarks.svelte";
-  import Apps from "./lib/pages/Apps.svelte";
   import About from "./lib/pages/About.svelte";
   import Settings from "./lib/pages/Settings.svelte";
   import { settings } from "./lib/settings.svelte";
+  import { sections as toolSections, tools } from "./tools/registry";
 
   type Page = { id: string; label: string; icon: string; component: Component; color?: string; value?: () => string };
 
-  const s = $derived(live.sample);
-  const sections: { title: string; pages: Page[] }[] = [
-    {
-      title: "Monitor",
-      pages: [
-        { id: "overview", label: "Overview", icon: "overview", component: Overview },
-        { id: "processes", label: "Processes", icon: "processes", component: Processes, value: () => (s ? `${s.processes}` : "") },
-        { id: "cpu", label: "CPU", icon: "cpu", component: Cpu, color: "var(--cpu)", value: () => pct(s?.cpu) },
-        { id: "memory", label: "Memory", icon: "memory", component: Memory, color: "var(--mem)", value: () => (s ? pct((s.memUsed / s.memTotal) * 100) : "") },
-        { id: "disks", label: "Disks", icon: "disks", component: Disks, color: "var(--disk)", value: () => (s ? rate(s.disks.reduce((a, d) => a + d.read + d.write, 0)) : "") },
-        { id: "network", label: "Network", icon: "network", component: Network, color: "var(--net)", value: () => (s ? rate(s.nets.reduce((a, n) => a + n.rx + n.tx, 0)) : "") },
-        { id: "gpu", label: "GPU", icon: "gpu", component: Gpu, color: "var(--gpu)", value: () => (s?.gpus[0] ? pct(s.gpus[0].util) : "") },
-        { id: "sensors", label: "Power & Thermals", icon: "sensors", component: Sensors, color: "var(--temp)", value: () => temp(s?.cpuTemp) },
-      ],
-    },
-    {
-      title: "Tools",
-      pages: [
-        { id: "connections", label: "Connections", icon: "connections", component: Connections },
-        { id: "space", label: "Disk Space", icon: "space", component: DiskSpace },
-        { id: "bench", label: "Benchmarks", icon: "bench", component: Benchmarks },
-        { id: "apps", label: "Installed Apps", icon: "apps", component: Apps },
-      ],
-    },
-    { title: "", pages: [{ id: "about", label: "About & Credits", icon: "about", component: About }] },
+  const about: Page = { id: "about", label: "About & Credits", icon: "about", component: About };
+  // Tools draw their own icon path; the app's own pages name one of Icon's.
+  const sections: { title: string; pages: (Page & { path?: string })[] }[] = [
+    ...toolSections.map((sec) => ({
+      title: sec.title,
+      pages: tools
+        .filter((t) => t.section === sec.id)
+        .map((t) => ({ id: t.id, label: t.label, icon: "", path: t.icon, component: t.page, color: t.color, value: t.value })),
+    })),
+    { title: "", pages: [about] },
   ];
   const all = sections.flatMap((x) => x.pages);
 
@@ -100,7 +73,7 @@
         {#if section.title}<h2>{section.title}</h2>{:else}<hr />{/if}
         {#each section.pages as p (p.id)}
           <button class="item" aria-current={current === p.id ? "page" : undefined} onclick={() => go(p.id)}>
-            <span class="icon" style:color={p.color}><Icon name={p.icon} /></span>
+            <span class="icon" style:color={p.color}><Icon name={p.icon} path={p.path} /></span>
             <span class="label">{p.label}</span>
             {#if p.value}<span class="value">{p.value()}</span>{/if}
           </button>

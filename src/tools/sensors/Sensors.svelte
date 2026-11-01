@@ -1,9 +1,9 @@
 <script lang="ts">
-  import Chart from "../Chart.svelte";
-  import PageHeader from "../PageHeader.svelte";
-  import { api, parseError, type Reading, type SensorReport } from "../api";
-  import { temp, ghz, watts } from "../format";
-  import { live, poll } from "../live.svelte";
+  import Chart from "$lib/Chart.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, parseError, type Reading, type SensorReport } from "$lib/api";
+  import { temp, ghz, watts } from "$lib/format";
+  import { live, poll } from "$lib/live.svelte";
 
   const s = $derived(live.sample);
   let report = $state<SensorReport | null>(null);

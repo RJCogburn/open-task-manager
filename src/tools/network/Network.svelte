@@ -1,12 +1,12 @@
 <script lang="ts">
-  import Chart from "../Chart.svelte";
-  import PageHeader from "../PageHeader.svelte";
-  import { api, parseError, type NetProcess, type Origin, type ProcessSource } from "../api";
-  import SpeedResult from "../SpeedResult.svelte";
-  import { benchmarks } from "../benchmarks.svelte";
-  import { netRate, bytes, count } from "../format";
-  import { live, poll } from "../live.svelte";
-  import { settings } from "../settings.svelte";
+  import Chart from "$lib/Chart.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, parseError, type NetProcess, type Origin, type ProcessSource } from "$lib/api";
+  import SpeedResult from "$lib/SpeedResult.svelte";
+  import { benchmarks } from "$lib/benchmarks.svelte";
+  import { netRate, bytes, count } from "$lib/format";
+  import { live, poll } from "$lib/live.svelte";
+  import { settings } from "$lib/settings.svelte";
 
   const s = $derived(live.sample);
   const nets = $derived(s?.nets.filter((n) => settings.showIdleInterfaces || n.rxTotal + n.txTotal > 0) ?? []);

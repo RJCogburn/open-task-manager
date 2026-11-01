@@ -1,11 +1,11 @@
 <script lang="ts">
-  import Chart from "../Chart.svelte";
-  import PageHeader from "../PageHeader.svelte";
-  import ScanResults from "../ScanResults.svelte";
-  import { api, parseError, type Drive, type Mount } from "../api";
-  import { bytes, temp, count, pct, rate } from "../format";
-  import { live, poll } from "../live.svelte";
-  import { scan } from "../scan.svelte";
+  import Chart from "$lib/Chart.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import ScanResults from "$lib/ScanResults.svelte";
+  import { api, parseError, type Drive, type Mount } from "$lib/api";
+  import { bytes, temp, count, pct, rate } from "$lib/format";
+  import { live, poll } from "$lib/live.svelte";
+  import { scan } from "$lib/scan.svelte";
 
   const s = $derived(live.sample);
   let drives = $state<Drive[]>([]);

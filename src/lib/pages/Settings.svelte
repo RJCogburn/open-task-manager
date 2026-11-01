@@ -1,11 +1,11 @@
 <script lang="ts">
-  import Chart from "../Chart.svelte";
-  import PageHeader from "../PageHeader.svelte";
-  import { api, parseError, type Autostart, type LogStatus, type TrayConfig } from "../api";
-  import { benchmarks } from "../benchmarks.svelte";
-  import { bytes, pct } from "../format";
-  import { live } from "../live.svelte";
-  import { defaults, resetSettings, settings, type ChartStyle } from "../settings.svelte";
+  import Chart from "$lib/Chart.svelte";
+  import PageHeader from "$lib/PageHeader.svelte";
+  import { api, parseError, type Autostart, type LogStatus, type TrayConfig } from "$lib/api";
+  import { benchmarks } from "$lib/benchmarks.svelte";
+  import { bytes, pct } from "$lib/format";
+  import { live } from "$lib/live.svelte";
+  import { defaults, resetSettings, settings, type ChartStyle } from "$lib/settings.svelte";
 
   let { pages }: { pages: { id: string; label: string }[] } = $props();
 
