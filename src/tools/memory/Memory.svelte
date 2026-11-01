@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, type Proc } from "$lib/api";
@@ -17,7 +18,8 @@
 <PageHeader title="Memory" subtitle={s ? `${bytes(s.memTotal)} installed` : ""} />
 
 {#if s}
-  <section class="card">
+  <div class="card-stack">
+  <section class="card" use:card={{ group: "memory", id: "usage" }}>
     <div class="spread">
       <h3>Memory in use</h3>
       <span class="big" style:color="var(--mem)">{bytes(s.memUsed)}</span>
@@ -52,7 +54,7 @@
     </div>
   </section>
 
-  <section class="card" style="margin-top: 14px">
+  <section class="card" use:card={{ group: "memory", id: "top" }}>
     <h3>Using the most memory</h3>
     <ol class="list">
       {#each top as p (p.pid)}
@@ -64,6 +66,7 @@
       {/each}
     </ol>
   </section>
+  </div>
 {/if}
 
 <style>

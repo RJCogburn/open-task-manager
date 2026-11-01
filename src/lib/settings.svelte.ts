@@ -25,6 +25,8 @@ export type Settings = {
   rememberBenchmarks: boolean;
   /** Which service the internet speed test uses; "auto" prefers Ookla when installed. */
   speedTest: "auto" | "ookla" | "cloudflare";
+  /** The order of cards in each group, as the user arranged them. */
+  cardOrder: Record<string, string[]>;
   updates: {
     /** null until the user has been asked; checking contacts GitHub. */
     autoCheck: boolean | null;
@@ -50,6 +52,7 @@ export const defaults: Settings = {
   showIdleInterfaces: false,
   rememberBenchmarks: true,
   speedTest: "auto",
+  cardOrder: {},
   updates: { autoCheck: null, autoInstall: false, lastCheck: 0, dismissed: "" },
 };
 

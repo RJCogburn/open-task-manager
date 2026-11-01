@@ -3,6 +3,7 @@
   import Icon from "./lib/Icon.svelte";
   import UpdateBanner from "./lib/UpdateBanner.svelte";
   import { updates } from "./lib/updates.svelte";
+  import { arrange } from "./lib/arrange.svelte";
   import { live } from "./lib/live.svelte";
   import About from "./lib/pages/About.svelte";
   import Settings from "./lib/pages/Settings.svelte";
@@ -34,6 +35,7 @@
 
   function go(id: string) {
     current = id;
+    arrange.on = false;
     settings.lastPage = id;
     history.replaceState(null, "", `#${id}`);
     main?.scrollTo({ top: 0 });

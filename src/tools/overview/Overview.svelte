@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import Gauge from "$lib/Gauge.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
@@ -27,7 +28,7 @@
   <div class="empty"><span class="spinner"></span> Collecting the first readings…</div>
 {:else}
   <div class="grid" style="--min: 330px">
-    <section class="card tile">
+    <section class="card tile" use:card={{ group: "overview", id: "cpu" }}>
       <div class="head">
         <Gauge value={s.cpu} color="var(--cpu)" label="CPU usage" />
         <div>
@@ -41,7 +42,7 @@
       <Chart label="CPU usage" series={[{ label: "CPU", data: live.history("cpu"), color: "var(--cpu)" }]} tick={live.tick} height={90} format={(v) => pct(v)} />
     </section>
 
-    <section class="card tile">
+    <section class="card tile" use:card={{ group: "overview", id: "memory" }}>
       <div class="head">
         <Gauge value={(s.memUsed / s.memTotal) * 100} color="var(--mem)" label="Memory in use" />
         <div>
@@ -56,7 +57,7 @@
     </section>
 
     {#each s.gpus as g (g.id)}
-      <section class="card tile">
+      <section class="card tile" use:card={{ group: "overview", id: `gpu:${g.id}` }}>
         <div class="head">
           <Gauge value={g.util} color="var(--gpu)" label="{g.name} load" />
           <div>
@@ -72,7 +73,7 @@
     {/each}
 
     {#each s.disks as d (d.name)}
-      <section class="card tile">
+      <section class="card tile" use:card={{ group: "overview", id: `disk:${d.name}` }}>
         <div class="head">
           <Gauge value={d.busy} color="var(--disk)" label="{d.label} busy time" />
           <div>
@@ -96,7 +97,7 @@
     {/each}
 
     {#each nets as n (n.name)}
-      <section class="card tile">
+      <section class="card tile" use:card={{ group: "overview", id: `net:${n.name}` }}>
         <div class="head simple">
           <div>
             <h3>Network · {n.name}</h3>
@@ -120,7 +121,7 @@
       </section>
     {/each}
 
-    <section class="card">
+    <section class="card" use:card={{ group: "overview", id: "processes" }}>
       <h3>Busiest processes</h3>
       <ol class="top">
         {#each top as p (p.pid)}

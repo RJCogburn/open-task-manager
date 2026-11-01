@@ -47,6 +47,7 @@ export default defineTool({
 - `$lib/live.svelte`: the latest sample (`live.sample`), history for graphs (`live.history(key)`) and `poll()` for refreshing your own data
 - `$lib/format`: `bytes`, `rate`, `netRate`, `pct`, `temp` and more. Use `temp` and `netRate` so the user's unit settings apply.
 - `$lib/settings.svelte`: user settings, if your tool needs one (add it to the Settings page too)
+- `$lib/arrange.svelte`: put `use:card={{ group: "battery", id: "..." }}` on each card in a grid, and the page gets an Arrange button that lets people reorder them
 
 Copy an existing tool that is close to yours; `src/tools/sensors` and
 `src/tools/connections` are small.

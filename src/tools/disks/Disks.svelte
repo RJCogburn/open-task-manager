@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import ScanResults from "$lib/ScanResults.svelte";
@@ -103,7 +104,7 @@
     {@const rw = io.get(d.name)}
     {@const open = expanded === d.name}
     {@const target = targetOf(d)}
-    <section class="card drive" class:open>
+    <section class="card drive" use:card={{ group: "disks", id: d.name }} class:open>
       <div class="spread top">
         <div class="name">
           <h3>/dev/{d.name} · {kind(d)}{d.removable ? " · removable" : ""}</h3>

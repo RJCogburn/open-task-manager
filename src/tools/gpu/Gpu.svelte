@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import Gauge from "$lib/Gauge.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
@@ -20,8 +21,9 @@
   </div>
 {/if}
 
+<div class="card-stack">
 {#each s?.gpus ?? [] as g (g.id)}
-  <section class="card gpu">
+  <section class="card gpu" use:card={{ group: "gpu", id: g.id }}>
     <div class="head">
       <Gauge value={g.util} color="var(--gpu)" size={104} label="{g.name} load" />
       <div class="title">
@@ -76,6 +78,7 @@
     </div>
   </section>
 {/each}
+</div>
 
 <style>
   .gpu + .gpu {

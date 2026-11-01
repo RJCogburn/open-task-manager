@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { card } from "$lib/arrange.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, type ToolStatus } from "$lib/api";
   import SpeedResult from "$lib/SpeedResult.svelte";
@@ -52,7 +53,7 @@
 {/snippet}
 
 <div class="grid" style="--min: 380px">
-  <section class="card bench">
+  <section class="card bench" use:card={{ group: "benchmarks", id: "cpu" }}>
     <div class="spread">
       <div><h3>Processor</h3><p class="muted">Integer and floating-point work for 3 seconds on one thread, then on all {live.info?.logicalCores ?? ""}.</p></div>
       {@render button("cpu", "Run", () => run("cpu", api.benchCpu))}
@@ -68,7 +69,7 @@
     {@render status("cpu")}
   </section>
 
-  <section class="card bench">
+  <section class="card bench" use:card={{ group: "benchmarks", id: "memory" }}>
     <div class="spread">
       <div><h3>Memory</h3><p class="muted">Copies a 256 MB block over and over for 2 seconds.</p></div>
       {@render button("memory", "Run", () => run("memory", api.benchMemory))}
@@ -82,7 +83,7 @@
     {@render status("memory")}
   </section>
 
-  <section class="card bench">
+  <section class="card bench" use:card={{ group: "benchmarks", id: "disk" }}>
     <div class="spread">
       <div><h3>Disk</h3><p class="muted">fio writes a 1 GB test file, measures four access patterns for 5 seconds each, then deletes it.</p></div>
       {@render button("disk", "Run", () => run("disk", async () => ({ results: await api.benchDisk(b.diskFolder), folder: b.diskFolder })), tool("fio")?.installed === false)}
@@ -108,7 +109,7 @@
     {@render status("disk", "fio")}
   </section>
 
-  <section class="card bench">
+  <section class="card bench" use:card={{ group: "benchmarks", id: "gpu" }}>
     <div class="spread">
       <div><h3>Graphics</h3><p class="muted">glmark2's standard OpenGL scenes, drawn off screen. Takes a few minutes.</p></div>
       {@render button("gpu", "Run", () => run("gpu", api.benchGpu), tool("glmark2")?.installed === false)}
@@ -122,7 +123,7 @@
     {@render status("gpu", "glmark2")}
   </section>
 
-  <section class="card bench">
+  <section class="card bench" use:card={{ group: "benchmarks", id: "network" }}>
     <div class="spread">
       <div>
         <h3>Internet</h3>

@@ -1,12 +1,42 @@
 <script lang="ts">
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
-  import { api, parseError, type Autostart, type LogStatus, type TrayConfig } from "$lib/api";
+  import { api, parseError, type Autostart, type LogStatus, type TrayConfig, type WidgetItem, type WidgetStatus } from "$lib/api";
+  import { external } from "$lib/link";
   import { benchmarks } from "$lib/benchmarks.svelte";
   import { bytes, pct } from "$lib/format";
   import { live } from "$lib/live.svelte";
   import { defaults, resetSettings, settings, type ChartStyle } from "$lib/settings.svelte";
   import { updates } from "$lib/updates.svelte";
+
+  let widgets = $state<WidgetStatus | null>(null);
+  api.widgetsGet().then((w) => (widgets = w));
+  const widgetItems: { id: WidgetItem; label: string }[] = [
+    { id: "cpu", label: "Processor" },
+    { id: "memory", label: "Memory" },
+    { id: "gpu", label: "Graphics" },
+    { id: "network", label: "Network" },
+    { id: "disks", label: "Disks" },
+    { id: "temperature", label: "Temperature" },
+  ];
+
+  async function saveWidgets() {
+    if (!widgets) return;
+    error = "";
+    try {
+      await api.widgetsSet(widgets.config);
+    } catch (e) {
+      error = parseError(e).message;
+    }
+  }
+
+  function toggleItem(id: WidgetItem, on: boolean) {
+    if (!widgets) return;
+    // A reading turned on goes at the end; the panel keeps the order you arranged.
+    const items = widgets.config.items.filter((i) => i !== id);
+    widgets.config.items = on ? [...items, id] : items;
+    saveWidgets();
+  }
 
   const installedAs = {
     appimage: "AppImage",
@@ -293,6 +323,64 @@
       <span class="faint">Results are kept on this computer only.</span>
       <button class="btn" onclick={clearBenchmarks}>Clear saved results</button>
     </div>
+  </section>
+
+  <section class="card wide">
+    <div class="spread">
+      <h3>Desktop widgets</h3>
+      {#if widgets}
+        <label class="row">
+          <span class="muted" style="font-size: 13px">Show the widget panel</span>
+          <input type="checkbox" bind:checked={widgets.config.enabled} onchange={saveWidgets} />
+        </label>
+      {/if}
+    </div>
+    <p class="faint hint">
+      A small see-through panel with the readings you pick. Drag it anywhere; hover over it for buttons to open Open
+      Task Manager or hide the panel. It stays up while the app runs in the tray.
+    </p>
+    {#if widgets}
+      <div class="kinds" class:off={!widgets.config.enabled}>
+        {#each widgetItems as w (w.id)}
+          <label class="kind">
+            <input type="checkbox" checked={widgets.config.items.includes(w.id)} onchange={(e) => toggleItem(w.id, e.currentTarget.checked)} />
+            <span><b>{w.label}</b></span>
+          </label>
+        {/each}
+      </div>
+      <div class="row logrow">
+        <div class="seg" role="group" aria-label="Widget layout">
+          <button aria-pressed={widgets.config.layout === "vertical"} onclick={() => ((widgets!.config.layout = "vertical"), saveWidgets())}>Stacked</button>
+          <button aria-pressed={widgets.config.layout === "horizontal"} onclick={() => ((widgets!.config.layout = "horizontal"), saveWidgets())}>Side by side</button>
+        </div>
+        <label class="row">
+          <input type="checkbox" bind:checked={widgets.config.graphs} onchange={saveWidgets} />
+          <span class="muted">Graphs</span>
+        </label>
+        <label class="row">
+          <span class="muted">See-through</span>
+          <input type="range" min="0.3" max="1" step="0.05" value={1.3 - widgets.config.opacity}
+            onchange={(e) => ((widgets!.config.opacity = 1.3 - Number(e.currentTarget.value)), saveWidgets())} />
+        </label>
+      </div>
+      <p class="faint hint">
+        On Wayland, apps can't keep their own windows behind others. On KDE: click the panel, press Alt+F3, and
+        choose More Actions → Keep Below Others. To have KDE remember it and the panel's place, use More Actions →
+        Configure Special Window Settings instead.
+      </p>
+
+      <h3 class="sub">Readings for other widgets</h3>
+      <label class="field">
+        <span>Share readings with other desktop widgets</span>
+        <input type="checkbox" bind:checked={widgets.config.feed} onchange={saveWidgets} />
+      </label>
+      <p class="faint hint">
+        Writes the latest readings every second to a file that only you can read, kept in memory, so Plasma widgets,
+        GNOME extensions or conky can show them without measuring everything again.
+        {#if widgets.feedPath}<br /><code>{widgets.feedPath}</code>{/if}
+        <a href="https://github.com/RJCogburn/open-task-manager/blob/main/docs/readings-feed.md" use:external>How to use it</a>
+      </p>
+    {/if}
   </section>
 
   <section class="card wide">

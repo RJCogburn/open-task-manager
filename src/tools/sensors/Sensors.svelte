@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, parseError, type Reading, type SensorReport } from "$lib/api";
@@ -65,19 +66,19 @@
 
 {#if s}
   <div class="grid" style="--min: 300px">
-    <section class="card">
+    <section class="card" use:card={{ group: "sensors", id: "cpu-temp" }}>
       <div class="spread"><h3>CPU temperature</h3><b class="v" style:color="var(--temp)">{temp(s.cpuTemp)}</b></div>
       <div style="margin-top: 10px">
         <Chart label="CPU temperature" series={[{ label: "CPU", data: live.history("cpuTemp"), color: "var(--temp)" }]} tick={live.tick} height={110} format={(v) => temp(v)} />
       </div>
     </section>
-    <section class="card">
+    <section class="card" use:card={{ group: "sensors", id: "cpu-clock" }}>
       <div class="spread"><h3>CPU clock (average)</h3><b class="v" style:color="var(--cpu)">{ghz(avgFreq)}</b></div>
       <div style="margin-top: 10px">
         <Chart label="CPU clock" series={[{ label: "Clock", data: live.history("freq"), color: "var(--cpu)" }]} tick={live.tick} height={110} max="auto" format={(v) => ghz(v)} />
       </div>
     </section>
-    <section class="card">
+    <section class="card" use:card={{ group: "sensors", id: "power" }}>
       <div class="spread">
         <h3>Measured power draw</h3>
         <b class="v" style:color="var(--net)">{watts((report?.cpuPower ?? 0) + gpuPower)}</b>
@@ -100,7 +101,7 @@
 {#if report}
   <div class="chips">
     {#each report.chips as chip (chip.id)}
-      <section class="card chip">
+      <section class="card chip" use:card={{ group: "sensors:chips", id: chip.id }}>
         <h3>{chip.name.split(" · ")[0]}</h3>
         <div class="faint id">{chip.id} · {chip.adapter}</div>
         {#each kindOrder as kind (kind)}

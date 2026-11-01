@@ -3,6 +3,7 @@
 <script lang="ts">
   import { getContext, type Snippet } from "svelte";
   import type { Tool } from "./tool";
+  import { arrange, resetOrder } from "./arrange.svelte";
   import { credits, type CreditId } from "./credits";
   import { external } from "./link";
 
@@ -39,7 +40,24 @@
         {/each}
       </div>
     {/if}
-    {#if actions}<div class="actions">{@render actions()}</div>{/if}
+    {#if actions || arrange.cards > 0}
+      <div class="actions">
+        {#if actions && !arrange.on}{@render actions()}{/if}
+        {#if arrange.cards > 0}
+          {#if arrange.on}
+            <span class="faint hint">Drag cards, or use the arrow keys on a selected one</span>
+            <button class="btn" onclick={resetOrder}>Reset</button>
+          {/if}
+          <button
+            class="btn"
+            class:primary={arrange.on}
+            aria-pressed={arrange.on}
+            title="Move the cards on this page around"
+            onclick={() => (arrange.on = !arrange.on)}>{arrange.on ? "Done" : "Arrange"}</button
+          >
+        {/if}
+      </div>
+    {/if}
   </div>
 </header>
 
@@ -113,5 +131,9 @@
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+
+  .hint {
+    font-size: 12px;
   }
 </style>

@@ -9,6 +9,7 @@ mod startup;
 mod tools;
 mod tray;
 mod updates;
+mod widgets;
 
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
@@ -24,6 +25,7 @@ pub struct AppState {
     logger: Arc<logging::Logger>,
     tray: Arc<tray::Tray>,
     updates: updates::Updates,
+    widgets: Arc<widgets::Widgets>,
     rapl: tools::sensors::RaplState,
 }
 
@@ -42,6 +44,7 @@ pub fn run() {
     let gpu = Arc::new(gpu::GpuMonitor::start());
     let logger = Arc::new(logging::Logger::load());
     let tray = Arc::new(tray::Tray::load());
+    let widgets = Arc::new(widgets::Widgets::load());
     let state = AppState {
         shared: shared.clone(),
         interval_ms: interval_ms.clone(),
@@ -51,6 +54,7 @@ pub fn run() {
         logger: logger.clone(),
         tray: tray.clone(),
         updates: updates::Updates::default(),
+        widgets: widgets.clone(),
         rapl: tools::sensors::RaplState::default(),
     };
     tauri::Builder::default()
@@ -63,7 +67,10 @@ pub fn run() {
             if let Err(e) = tray.apply(app.handle()) {
                 eprintln!("{e}");
             }
-            sampler::spawn(app.handle().clone(), shared, gpu, interval_ms, logger, tray.clone());
+            sampler::spawn(app.handle().clone(), shared, gpu, interval_ms, logger, tray.clone(), widgets.clone());
+            if let Err(e) = widgets.apply(app.handle()) {
+                eprintln!("{e}");
+            }
             // The window starts hidden. Started minimized (from the login
             // autostart entry), it stays in the tray, or minimized without one.
             let minimized = std::env::args().any(|a| a == startup::MINIMIZED_FLAG);
@@ -78,11 +85,23 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event
-                && window.state::<AppState>().tray.keeps_running()
-            {
-                api.prevent_close();
-                let _ = window.hide();
+            let state = window.state::<AppState>();
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
+                    if state.tray.keeps_running() {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    } else {
+                        // Without the tray, closing the window quits, widgets and all.
+                        window.app_handle().exit(0);
+                    }
+                }
+                tauri::WindowEvent::CloseRequested { .. } if window.label() == widgets::LABEL => state.widgets.closed(),
+                tauri::WindowEvent::Moved(position) if window.label() == widgets::LABEL => {
+                    let logical = position.to_logical::<f64>(window.scale_factor().unwrap_or(1.0));
+                    state.widgets.moved((logical.x, logical.y));
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -102,6 +121,9 @@ pub fn run() {
             updates::update_check,
             updates::update_install,
             updates::app_restart,
+            widgets::widgets_get,
+            widgets::widgets_set,
+            widgets::show_main,
             // Tools: one group per file in tools/
             tools::benchmarks::bench_cpu,
             tools::benchmarks::bench_memory,

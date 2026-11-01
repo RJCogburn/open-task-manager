@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { card } from "$lib/arrange.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, parseError, type Connection } from "$lib/api";
   import { poll } from "$lib/live.svelte";
@@ -65,17 +66,17 @@
 </PageHeader>
 
 <div class="grid" style="--min: 220px; margin-bottom: 14px">
-  <section class="card">
+  <section class="card" use:card={{ group: "connections", id: "exposed" }}>
     <h3>Open to the network</h3>
     <div class="big" style:color={exposed.length ? "var(--warn)" : "var(--ok)"}>{exposed.length}</div>
     <div class="faint small">Listening sockets other computers can reach</div>
   </section>
-  <section class="card">
+  <section class="card" use:card={{ group: "connections", id: "active" }}>
     <h3>Active connections</h3>
     <div class="big">{list.filter((c) => !listening(c)).length}</div>
     <div class="faint small">{list.filter(listening).length} listening sockets</div>
   </section>
-  <section class="card most">
+  <section class="card most" use:card={{ group: "connections", id: "most" }}>
     <h3>Most connections</h3>
     <ol>
       {#each byProcess as [name, n] (name)}

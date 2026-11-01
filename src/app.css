@@ -76,6 +76,42 @@ body {
   overflow: hidden;
 }
 
+/* Cards one above the other, in an order the user can arrange. */
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Arrange mode: cards are dragged whole, so what's inside them sits still. */
+.arranging {
+  cursor: grab;
+  outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 3px;
+  user-select: none;
+  touch-action: none;
+}
+
+.arranging * {
+  pointer-events: none;
+}
+
+.arranging:focus-visible {
+  outline-style: solid;
+  outline-color: var(--accent);
+}
+
+.arranging.dragging {
+  cursor: grabbing;
+  opacity: 0.6;
+  outline-color: var(--accent);
+}
+
+/* The widget panel's window is see-through; only its tiles are drawn. */
+.widget-mode body {
+  background: transparent;
+}
+
 button,
 input,
 select {

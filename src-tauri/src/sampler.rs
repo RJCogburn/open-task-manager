@@ -19,6 +19,7 @@ use crate::AppState;
 use crate::gpu::{GpuMonitor, GpuSample};
 use crate::logging::Logger;
 use crate::tray::Tray;
+use crate::widgets::Widgets;
 
 pub struct Shared {
     pub sys: System,
@@ -98,6 +99,7 @@ pub fn spawn(
     interval_ms: Arc<AtomicU64>,
     logger: Arc<Logger>,
     tray: Arc<Tray>,
+    widgets: Arc<Widgets>,
 ) {
     thread::spawn(move || {
         let mut networks = Networks::new_with_refreshed_list().ok();
@@ -168,6 +170,7 @@ pub fn spawn(
             sample.gpus = gpu.sample();
             logger.record(&sample);
             tray.update(&sample);
+            widgets.feed(&sample);
             let _ = app.emit("sample", &sample);
         }
     });

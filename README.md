@@ -16,6 +16,7 @@ system already has in one window, with live graphs.
 - **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (curl + Cloudflare)
 - **Installed Apps**: pacman, dpkg, rpm and Flatpak packages by size
 - **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
+- **Desktop widgets**: a see-through panel with the readings you pick, and a [readings feed](docs/readings-feed.md) so Plasma widgets, GNOME extensions or conky can show them too
 - **Updates**: tells you when a new version is out; installs it on request or automatically (signed updates for the AppImage, .deb and .rpm)
 - **Settings**: graph style, units, start page, start at login, and logging chosen hardware to CSV files
 

@@ -251,6 +251,18 @@ export type UpdateStatus = {
   canInstall: boolean;
 };
 
+export type WidgetItem = "cpu" | "memory" | "gpu" | "network" | "disks" | "temperature";
+export type WidgetConfig = {
+  enabled: boolean;
+  items: WidgetItem[];
+  layout: "vertical" | "horizontal";
+  graphs: boolean;
+  opacity: number;
+  position: [number, number] | null;
+  feed: boolean;
+};
+export type WidgetStatus = { config: WidgetConfig; feedPath: string | null };
+
 export type ToolStatus = { program: string; installed: boolean; installHint: string | null };
 
 export const api = {
@@ -283,6 +295,9 @@ export const api = {
   updateCheck: () => invoke<UpdateStatus>("update_check"),
   updateInstall: () => invoke<void>("update_install"),
   appRestart: () => invoke<void>("app_restart"),
+  widgetsGet: () => invoke<WidgetStatus>("widgets_get"),
+  widgetsSet: (config: WidgetConfig) => invoke<void>("widgets_set", { config }),
+  showMain: () => invoke<void>("show_main"),
   netActivity: () => invoke<NetProcess[]>("net_activity"),
   processSource: (pid: number) => invoke<ProcessSource>("process_source", { pid }),
   loggingGet: () => invoke<LogStatus>("logging_get"),
