@@ -17,6 +17,8 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::AppState;
 use crate::gpu::{GpuMonitor, GpuSample};
+use crate::logging::Logger;
+use crate::tray::Tray;
 
 pub struct Shared {
     pub sys: System,
@@ -51,45 +53,52 @@ fn process_refresh() -> ProcessRefreshKind {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sample {
-    time: u64,
-    cpu: f32,
-    cores: Vec<f32>,
-    freqs: Vec<u64>,
-    cpu_temp: Option<f32>,
-    mem_used: u64,
-    mem_total: u64,
-    swap_used: u64,
-    swap_total: u64,
-    disks: Vec<DiskIo>,
-    nets: Vec<NetIo>,
-    gpus: Vec<GpuSample>,
-    processes: usize,
-    threads: usize,
-    uptime: u64,
-    load: [f64; 3],
+    pub(crate) time: u64,
+    pub(crate) cpu: f32,
+    pub(crate) cores: Vec<f32>,
+    pub(crate) freqs: Vec<u64>,
+    pub(crate) cpu_temp: Option<f32>,
+    pub(crate) mem_used: u64,
+    pub(crate) mem_total: u64,
+    pub(crate) swap_used: u64,
+    pub(crate) swap_total: u64,
+    pub(crate) disks: Vec<DiskIo>,
+    pub(crate) nets: Vec<NetIo>,
+    pub(crate) gpus: Vec<GpuSample>,
+    pub(crate) processes: usize,
+    pub(crate) threads: usize,
+    pub(crate) uptime: u64,
+    pub(crate) load: [f64; 3],
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct DiskIo {
-    name: String,
-    label: String,
-    read: f64,
-    write: f64,
-    busy: f64,
+pub(crate) struct DiskIo {
+    pub(crate) name: String,
+    pub(crate) label: String,
+    pub(crate) read: f64,
+    pub(crate) write: f64,
+    pub(crate) busy: f64,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct NetIo {
-    name: String,
-    rx: f64,
-    tx: f64,
-    rx_total: u64,
-    tx_total: u64,
+pub(crate) struct NetIo {
+    pub(crate) name: String,
+    pub(crate) rx: f64,
+    pub(crate) tx: f64,
+    pub(crate) rx_total: u64,
+    pub(crate) tx_total: u64,
 }
 
-pub fn spawn(app: AppHandle, shared: Arc<Mutex<Shared>>, gpu: Arc<GpuMonitor>, interval_ms: Arc<AtomicU64>) {
+pub fn spawn(
+    app: AppHandle,
+    shared: Arc<Mutex<Shared>>,
+    gpu: Arc<GpuMonitor>,
+    interval_ms: Arc<AtomicU64>,
+    logger: Arc<Logger>,
+    tray: Arc<Tray>,
+) {
     thread::spawn(move || {
         let mut networks = Networks::new_with_refreshed_list().ok();
         let mut disks = DiskStats::default();
@@ -157,6 +166,8 @@ pub fn spawn(app: AppHandle, shared: Arc<Mutex<Shared>>, gpu: Arc<GpuMonitor>, i
                 sample.nets.sort_by(|a, b| a.name.cmp(&b.name));
             }
             sample.gpus = gpu.sample();
+            logger.record(&sample);
+            tray.update(&sample);
             let _ = app.emit("sample", &sample);
         }
     });

@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { getVersion } from "@tauri-apps/api/app";
   import PageHeader from "../PageHeader.svelte";
   import { api, type ToolStatus } from "../api";
   import { credits, groupTitles, type Credit, type CreditGroup } from "../credits";
   import { external } from "../link";
 
   let tools = $state<ToolStatus[]>([]);
+  let version = $state("");
+  getVersion().then((v) => (version = v));
   api.toolStatus().then((t) => (tools = t));
 
   const groups = Object.keys(groupTitles) as CreditGroup[];
@@ -16,7 +19,7 @@
 
 <section class="card intro">
   <div>
-    <h2>Open Task Manager</h2>
+    <h2>Open Task Manager {#if version}<span class="faint version">version {version}</span>{/if}</h2>
     <p>
       A free task manager for Linux that brings together tools your system already has: live graphs for CPU, memory,
       disks, network and graphics cards; a process manager; sensors and power; network connections; a disk space
@@ -65,6 +68,12 @@
 </p>
 
 <style>
+  .version {
+    font-size: 13px;
+    font-weight: 500;
+    margin-left: 6px;
+  }
+
   .intro {
     display: flex;
     gap: 20px;

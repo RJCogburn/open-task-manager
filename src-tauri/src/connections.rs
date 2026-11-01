@@ -8,17 +8,17 @@ use crate::tools;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Connection {
-    protocol: String,
-    state: String,
-    local_address: String,
-    local_port: String,
-    peer_address: String,
-    peer_port: String,
-    process: Option<String>,
-    pid: Option<u32>,
+    pub(crate) protocol: String,
+    pub(crate) state: String,
+    pub(crate) local_address: String,
+    pub(crate) local_port: String,
+    pub(crate) peer_address: String,
+    pub(crate) peer_port: String,
+    pub(crate) process: Option<String>,
+    pub(crate) pid: Option<u32>,
     /// "network" when other machines can reach a listening socket, "local"
     /// when only this computer can, "outbound" for connections to elsewhere.
-    exposure: &'static str,
+    pub(crate) exposure: &'static str,
 }
 
 #[tauri::command]
@@ -34,7 +34,7 @@ pub async fn connections() -> Result<Vec<Connection>, String> {
     .map_err(|e| e.to_string())?
 }
 
-fn parse_line(line: &str) -> Option<Connection> {
+pub(crate) fn parse_line(line: &str) -> Option<Connection> {
     let mut f = line.split_whitespace();
     let protocol = f.next()?.to_string();
     let state = f.next()?.to_string();
@@ -62,7 +62,7 @@ fn split_address(s: &str) -> (String, String) {
     (address.to_string(), port.to_string())
 }
 
-fn is_loopback(address: &str) -> bool {
+pub(crate) fn is_loopback(address: &str) -> bool {
     address.starts_with("127.") || address == "::1" || address == "::ffff:127.0.0.1"
 }
 

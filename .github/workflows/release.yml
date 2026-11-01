@@ -1,0 +1,79 @@
+# Builds .deb, .rpm and AppImage packages for x86_64 and ARM, and uploads them
+# to a draft GitHub release. Push a tag like v0.79.0 to start it; publish the
+# draft from the Releases page once you've checked it.
+#
+# Packages are built on Ubuntu 22.04, the oldest system supported (WebKitGTK
+# 4.1), so they also run on everything newer.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            arch: x86_64
+          - runner: ubuntu-22.04-arm
+            arch: aarch64
+    name: Build (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(sed -n 's/^  "version": "\(.*\)",$/\1/p' src-tauri/tauri.conf.json)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in src-tauri/tauri.conf.json"
+            exit 1
+          fi
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev libssl-dev patchelf file build-essential
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Open Task Manager v__VERSION__
+          releaseBody: |
+            Download the package for your system:
+
+            - **Ubuntu, Debian, Linux Mint, Pop!_OS**: the `.deb` file
+            - **Fedora, openSUSE**: the `.rpm` file
+            - **Any other distribution**: the `.AppImage` file. Make it executable (`chmod +x`) and run it.
+            - **Arch, CachyOS, Manjaro**: build with the PKGBUILD in `packaging/arch`
+
+            `amd64` / `x86_64` files are for most PCs; `arm64` / `aarch64` files are for ARM computers.
+            Needs Ubuntu 22.04, Debian 12, Fedora 36 or newer.
+          releaseDraft: true
+          prerelease: false

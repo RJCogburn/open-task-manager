@@ -1,7 +1,7 @@
 <script lang="ts">
   import Chart from "../Chart.svelte";
   import PageHeader from "../PageHeader.svelte";
-  import { celsius, duration, ghz, pct } from "../format";
+  import { temp, duration, ghz, pct } from "../format";
   import { live } from "../live.svelte";
 
   const s = $derived(live.sample);
@@ -22,7 +22,7 @@
 {#if s}
   <section class="card">
     <div class="spread">
-      <h3>Utilization over the last {live.settings.intervalMs * 120 / 1000} seconds</h3>
+      <h3>Utilization over the last {(live.settings.intervalMs * live.settings.chart.history) / 1000} seconds</h3>
       <span class="big" style:color="var(--cpu)">{pct(s.cpu)}</span>
     </div>
     <div style="margin-top: 12px">
@@ -40,7 +40,7 @@
       <div class="stat"><span>Utilization</span><b>{pct(s.cpu, 1)}</b></div>
       <div class="stat"><span>Average speed</span><b>{ghz(freqs.length ? freqs.reduce((a, b) => a + b, 0) / freqs.length : null)}</b></div>
       <div class="stat"><span>Fastest core</span><b>{ghz(freqs.length ? Math.max(...freqs) : null)}</b></div>
-      <div class="stat"><span>Temperature</span><b>{celsius(s.cpuTemp)}</b></div>
+      <div class="stat"><span>Temperature</span><b>{temp(s.cpuTemp)}</b></div>
       <div class="stat"><span>Processes</span><b>{s.processes.toLocaleString()}</b></div>
       <div class="stat"><span>Threads</span><b>{s.threads.toLocaleString()}</b></div>
       <div class="stat"><span>Load (1, 5, 15 min)</span><b>{s.load.map((l) => l.toFixed(2)).join(" · ")}</b></div>

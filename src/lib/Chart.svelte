@@ -4,7 +4,8 @@
   only when `tick` changes or the size changes, so idle pages cost nothing.
 -->
 <script lang="ts">
-  import { HISTORY } from "./live.svelte";
+  import { historyLength } from "./live.svelte";
+  import { settings } from "./settings.svelte";
 
   type Series = { label: string; data: number[]; color: string; fill?: boolean };
 
@@ -64,10 +65,12 @@
     const peak = top();
     const pad = 2;
     const h = height - pad * 2;
-    const step = width / (HISTORY - 1);
+    const look = settings.chart;
+    const slots = historyLength();
+    const step = width / (slots - 1);
     const y = (v: number) => pad + h - (Math.min(v, peak) / peak) * h;
 
-    if (grid) {
+    if (grid && look.grid) {
       ctx.strokeStyle = resolve("var(--grid)");
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -86,23 +89,39 @@
 
     for (const s of series) {
       const color = resolve(s.color);
-      const offset = HISTORY - s.data.length;
+      const offset = slots - s.data.length;
       const pts: [number, number][] = [];
       s.data.forEach((v, i) => {
         if (isFinite(v)) pts.push([(offset + i) * step, y(v)]);
       });
+      if (look.style === "bars") {
+        // Several series share a slot side by side.
+        const n = series.length;
+        const barW = Math.max(1, (step * 0.8) / n);
+        const k = series.indexOf(s);
+        ctx.fillStyle = s.fill === false ? color : withAlpha(color, 0.75);
+        for (const [x, py] of pts) ctx.fillRect(x - (step * 0.4) + k * barW, py, barW, height - py);
+        continue;
+      }
       if (pts.length < 2) continue;
       const path = new Path2D();
       path.moveTo(pts[0][0], pts[0][1]);
-      // Curves through midpoints: smooth, and never overshoot the data.
-      for (let i = 1; i < pts.length - 1; i++) {
-        const mx = (pts[i][0] + pts[i + 1][0]) / 2;
-        const my = (pts[i][1] + pts[i + 1][1]) / 2;
-        path.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+      if (look.style === "smooth") {
+        // Curves through midpoints: smooth, and never overshoot the data.
+        for (let i = 1; i < pts.length - 1; i++) {
+          const mx = (pts[i][0] + pts[i + 1][0]) / 2;
+          const my = (pts[i][1] + pts[i + 1][1]) / 2;
+          path.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+        }
+        path.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+      } else {
+        for (let i = 1; i < pts.length; i++) {
+          if (look.style === "step") path.lineTo(pts[i][0], pts[i - 1][1]);
+          path.lineTo(pts[i][0], pts[i][1]);
+        }
       }
-      path.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
 
-      if (s.fill !== false) {
+      if (s.fill !== false && look.fill) {
         const area = new Path2D(path);
         area.lineTo(pts[pts.length - 1][0], height);
         area.lineTo(pts[0][0], height);
@@ -114,7 +133,7 @@
         ctx.fill(area);
       }
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1.75;
+      ctx.lineWidth = look.thickness;
       ctx.lineJoin = "round";
       ctx.stroke(path);
     }
@@ -145,13 +164,14 @@
   }
 
   function valueAt(s: Series, slot: number): number | null {
-    const v = s.data[slot - (HISTORY - s.data.length)];
+    const v = s.data[slot - (historyLength() - s.data.length)];
     return v != null && isFinite(v) ? v : null;
   }
 
   function onmove(e: PointerEvent) {
     const r = canvas.getBoundingClientRect();
-    hover = Math.max(0, Math.min(HISTORY - 1, Math.round(((e.clientX - r.left) / r.width) * (HISTORY - 1))));
+    const last = historyLength() - 1;
+    hover = Math.max(0, Math.min(last, Math.round(((e.clientX - r.left) / r.width) * last)));
   }
 
   $effect(() => {
@@ -159,6 +179,7 @@
     void width;
     void hover;
     void series;
+    void JSON.stringify(settings.chart);
     draw();
   });
 
@@ -173,7 +194,7 @@
     void tick;
     return series.map((s) => `${s.label} ${format(s.data[s.data.length - 1] ?? 0)}`).join(", ");
   });
-  const ago = $derived(hover == null ? 0 : HISTORY - 1 - hover);
+  const ago = $derived(hover == null ? 0 : historyLength() - 1 - hover);
 </script>
 
 <div class="chart" bind:clientWidth={width} style:height="{height}px" role="img" aria-label="{label}: {latest}">
@@ -186,7 +207,7 @@
     onpointerleave={() => (hover = null)}
   ></canvas>
   {#if hover != null}
-    <div class="tip" class:left={hover > HISTORY / 2}>
+    <div class="tip" class:left={hover > historyLength() / 2}>
       <div class="faint">{ago === 0 ? "now" : `${ago} samples ago`}</div>
       {#each series as s (s.label)}
         {@const v = valueAt(s, hover)}

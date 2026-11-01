@@ -2,7 +2,7 @@
   import type { Component } from "svelte";
   import Icon from "./lib/Icon.svelte";
   import { live } from "./lib/live.svelte";
-  import { pct, rate, celsius } from "./lib/format";
+  import { pct, rate, temp } from "./lib/format";
   import Overview from "./lib/pages/Overview.svelte";
   import Processes from "./lib/pages/Processes.svelte";
   import Cpu from "./lib/pages/Cpu.svelte";
@@ -16,6 +16,8 @@
   import Benchmarks from "./lib/pages/Benchmarks.svelte";
   import Apps from "./lib/pages/Apps.svelte";
   import About from "./lib/pages/About.svelte";
+  import Settings from "./lib/pages/Settings.svelte";
+  import { settings } from "./lib/settings.svelte";
 
   type Page = { id: string; label: string; icon: string; component: Component; color?: string; value?: () => string };
 
@@ -31,7 +33,7 @@
         { id: "disks", label: "Disks", icon: "disks", component: Disks, color: "var(--disk)", value: () => (s ? rate(s.disks.reduce((a, d) => a + d.read + d.write, 0)) : "") },
         { id: "network", label: "Network", icon: "network", component: Network, color: "var(--net)", value: () => (s ? rate(s.nets.reduce((a, n) => a + n.rx + n.tx, 0)) : "") },
         { id: "gpu", label: "GPU", icon: "gpu", component: Gpu, color: "var(--gpu)", value: () => (s?.gpus[0] ? pct(s.gpus[0].util) : "") },
-        { id: "sensors", label: "Power & Thermals", icon: "sensors", component: Sensors, color: "var(--temp)", value: () => celsius(s?.cpuTemp) },
+        { id: "sensors", label: "Power & Thermals", icon: "sensors", component: Sensors, color: "var(--temp)", value: () => temp(s?.cpuTemp) },
       ],
     },
     {
@@ -47,11 +49,15 @@
   ];
   const all = sections.flatMap((x) => x.pages);
 
-  let current = $state(location.hash.slice(1) || "overview");
-  const page = $derived(all.find((p) => p.id === current) ?? all[0]);
+  let current = $state(
+    location.hash.slice(1) || (settings.startPage === "last" ? settings.lastPage : settings.startPage) || "overview",
+  );
+  // Settings is not in the page list: it opens from the gear and needs the list itself.
+  const page = $derived(current === "settings" ? null : (all.find((p) => p.id === current) ?? all[0]));
 
   function go(id: string) {
     current = id;
+    settings.lastPage = id;
     history.replaceState(null, "", `#${id}`);
     main?.scrollTo({ top: 0 });
   }
@@ -59,9 +65,14 @@
   let main = $state<HTMLElement>();
   live.start();
 
-  // Ctrl+1…9 jumps between pages.
+  // Ctrl+1…9 jumps between pages; Ctrl+, opens Settings.
   function onkeydown(e: KeyboardEvent) {
     if (!e.ctrlKey || e.altKey) return;
+    if (e.key === ",") {
+      e.preventDefault();
+      go("settings");
+      return;
+    }
     const n = Number(e.key);
     if (n >= 1 && n <= 9 && all[n - 1]) {
       e.preventDefault();
@@ -96,31 +107,22 @@
         {/each}
       {/each}
     </div>
-    <div class="settings">
-      <label>
-        <span>Update every</span>
-        <select class="input" value={live.settings.intervalMs} onchange={(e) => live.setIntervalMs(Number(e.currentTarget.value))}>
-          <option value={500}>0.5 s</option>
-          <option value={1000}>1 s</option>
-          <option value={2000}>2 s</option>
-          <option value={5000}>5 s</option>
-        </select>
-      </label>
-      <label>
-        <span>Theme</span>
-        <select class="input" value={live.settings.theme} onchange={(e) => live.setTheme(e.currentTarget.value as "system")}>
-          <option value="system">System</option>
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
-        </select>
-      </label>
+    <div class="foot">
+      <button class="item" aria-current={current === "settings" ? "page" : undefined} onclick={() => go("settings")} title="Settings (Ctrl+,)">
+        <span class="icon"><Icon name="settings" /></span>
+        <span class="label">Settings</span>
+      </button>
       <p class="faint">Free software · GPL-3.0-or-later</p>
     </div>
   </nav>
 
   <main bind:this={main}>
-    {#key page.id}
-      <page.component />
+    {#key current}
+      {#if page}
+        <page.component />
+      {:else}
+        <Settings pages={all} />
+      {/if}
     {/key}
   </main>
 </div>
@@ -261,29 +263,13 @@
     font-weight: 500;
   }
 
-  .settings {
-    padding: 12px 18px 16px;
+  .foot {
+    padding: 8px 10px 14px;
     border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
   }
 
-  .settings label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 12.5px;
-    color: var(--muted);
-  }
-
-  .settings select {
-    height: 28px;
-    font-size: 12.5px;
-  }
-
-  .settings p {
-    margin: 4px 0 0;
+  .foot p {
+    margin: 6px 10px 0;
     font-size: 11.5px;
   }
 

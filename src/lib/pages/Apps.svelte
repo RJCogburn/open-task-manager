@@ -34,10 +34,10 @@
   });
   const biggest = $derived(Math.max(1, ...rows.map((a) => a.size)));
   const total = $derived(rows.reduce((a, r) => a + r.size, 0));
-  const sourceNames: Record<string, string> = { pacman: "pacman", flatpak: "Flatpak", dpkg: "dpkg" };
+  const sourceNames: Record<string, string> = { pacman: "pacman", flatpak: "Flatpak", dpkg: "dpkg", rpm: "rpm" };
 </script>
 
-<PageHeader title="Installed Apps" subtitle="Everything your package managers have installed" sources={["pacman", "flatpak", "dpkg"]} />
+<PageHeader title="Installed Apps" subtitle="Everything your package managers have installed" sources={["pacman", "flatpak", "dpkg", "rpm"]} />
 
 <div class="toolbar">
   <input class="input" type="search" placeholder="Search name or description" bind:value={query} style="width: 300px" aria-label="Search apps" />

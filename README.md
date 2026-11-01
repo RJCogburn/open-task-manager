@@ -6,11 +6,15 @@ system already has in one window, with live graphs.
 - **Overview**: CPU, memory, every GPU, every drive and every network interface at a glance
 - **Processes**: sortable, searchable; end, kill or change priority (asks for your password through polkit when a process belongs to someone else)
 - **CPU, Memory, Disks, Network, GPU**: live graphs and details; per-thread CPU graphs; NVIDIA through `nvidia-smi`, AMD through the amdgpu driver
+- **Disks**: a card per drive with model, space, temperature and SMART health, and a folder-by-folder look at what fills it
+- **Network**: which programs use each interface, busiest first; flags programs that no installed package accounts for; internet speed test
 - **Power & Thermals**: every sensor lm-sensors can see, plus GPU power and CPU power (RAPL, needs root)
 - **Connections**: which programs hold which sockets, and which ones other computers can reach
 - **Disk Space**: a fast, parallel scan in the spirit of ncdu and Filelight; browse folders, largest files and space by file type
 - **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (curl + Cloudflare)
-- **Installed Apps**: pacman, Flatpak and dpkg packages by size
+- **Installed Apps**: pacman, dpkg, rpm and Flatpak packages by size
+- **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
+- **Settings**: graph style, units, start page, start at login, and logging chosen hardware to CSV files
 
 No account, no telemetry and no paid tier. The app contacts the internet only
 when you run the internet benchmark.
@@ -23,13 +27,15 @@ missing and how to install it.
 | Feature | Needs |
 |---|---|
 | Sensors | `lm_sensors` |
-| Connections | `iproute2` (installed almost everywhere) |
+| Connections, network activity | `iproute2` (installed almost everywhere) |
+| Drive details | `util-linux` (`lsblk`, installed almost everywhere) |
+| Drive health | `smartmontools` |
 | NVIDIA GPU | the NVIDIA driver (`nvidia-smi`) |
 | Disk benchmark | `fio` |
 | Graphics benchmark | `glmark2` |
 | Internet benchmark | `curl` |
 
-On Arch-based systems: `sudo pacman -S lm_sensors fio glmark2`
+On Arch-based systems: `sudo pacman -S lm_sensors smartmontools fio glmark2`
 
 ## Build and run
 
@@ -43,8 +49,31 @@ npm run tauri dev      # run in development
 npm run tauri build    # build .deb, .rpm and AppImage packages
 ```
 
+### Arch, CachyOS, Manjaro and other Arch-based systems
+
+`packaging/arch/PKGBUILD` builds the latest commit as `open-task-manager-git`,
+with a launcher entry and icons:
+
+```sh
+cd packaging/arch
+makepkg -si
+```
+
+Flatpak and Snap aren't offered: their sandbox hides other programs'
+processes, which a task manager needs to see.
+
 In VS Code, open `open-task-manager.code-workspace`. It has tasks to run the
 app, build packages and run all the checks (Ctrl+Shift+B).
+
+### Making a release
+
+1. Set the new version in `package.json`, `src-tauri/Cargo.toml` and
+   `src-tauri/tauri.conf.json`, then run `npm install` and `cargo build` in
+   `src-tauri` so the lock files follow.
+2. Commit, tag and push: `git tag v0.79.0 && git push origin main v0.79.0`.
+3. GitHub Actions builds the `.deb`, `.rpm` and AppImage for x86_64 and ARM on
+   Ubuntu 22.04 and uploads them to a draft release. Check it on the Releases
+   page, then publish it.
 
 ## How much load it adds
 

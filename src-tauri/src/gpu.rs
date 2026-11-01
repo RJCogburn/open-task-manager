@@ -17,18 +17,18 @@ use crate::tools;
 #[derive(Serialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GpuSample {
-    id: String,
-    name: String,
-    vendor: &'static str,
-    source: &'static str,
-    util: Option<f32>,
-    mem_used: Option<u64>,
-    mem_total: Option<u64>,
-    temp: Option<f32>,
-    power: Option<f32>,
-    power_limit: Option<f32>,
-    clock_mhz: Option<f32>,
-    fan: Option<f32>,
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) vendor: &'static str,
+    pub(crate) source: &'static str,
+    pub(crate) util: Option<f32>,
+    pub(crate) mem_used: Option<u64>,
+    pub(crate) mem_total: Option<u64>,
+    pub(crate) temp: Option<f32>,
+    pub(crate) power: Option<f32>,
+    pub(crate) power_limit: Option<f32>,
+    pub(crate) clock_mhz: Option<f32>,
+    pub(crate) fan: Option<f32>,
 }
 
 pub struct GpuMonitor {

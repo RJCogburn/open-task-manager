@@ -42,6 +42,22 @@ export const credits = {
     group: "runs",
     program: "lspci",
   },
+  utilLinux: {
+    name: "util-linux",
+    role: "Drives, their models and the filesystems on them (the lsblk command)",
+    license: "GPL-2.0-or-later",
+    url: "https://github.com/util-linux/util-linux",
+    group: "runs",
+    program: "lsblk",
+  },
+  smartmontools: {
+    name: "smartmontools",
+    role: "Drive health from SMART data (the smartctl command)",
+    license: "GPL-2.0-or-later",
+    url: "https://www.smartmontools.org/",
+    group: "runs",
+    program: "smartctl",
+  },
   fio: {
     name: "fio",
     role: "Disk benchmark: sequential and random read and write speed",
@@ -90,6 +106,14 @@ export const credits = {
     group: "runs",
     program: "dpkg-query",
   },
+  rpm: {
+    name: "RPM",
+    role: "Installed packages on Fedora, openSUSE and other RPM-based systems",
+    license: "GPL-2.0-or-later",
+    url: "https://rpm.org/",
+    group: "runs",
+    program: "rpm",
+  },
   polkit: {
     name: "polkit",
     role: "Asking for your password when a process belongs to another user (pkexec)",
@@ -121,6 +145,15 @@ export const credits = {
     license: "GPL-2.0-only",
     url: "https://kernel.org/",
     group: "reads",
+  },
+  ookla: {
+    name: "Speedtest CLI by Ookla",
+    role: "Internet speed test against speedtest.net servers (the speedtest command). Used only if you install it.",
+    license: "Proprietary (free to use; Ookla's license and privacy policy apply)",
+    url: "https://www.speedtest.net/apps/cli",
+    group: "runs",
+    program: "speedtest",
+    proprietary: true,
   },
   cloudflare: {
     name: "Cloudflare Speed Test",

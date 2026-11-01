@@ -1,0 +1,71 @@
+# Maintainer: RJCogburn <28759507+RJCogburn@users.noreply.github.com>
+pkgname=open-task-manager-git
+_pkgname=open-task-manager
+pkgver=0.79.0.r1.7f6bd99
+pkgrel=1
+pkgdesc="A free, open source task manager for Linux with live graphs, drive health, network activity and benchmarks"
+arch=('x86_64' 'aarch64')
+url="https://github.com/RJCogburn/open-task-manager"
+license=('GPL-3.0-or-later')
+depends=(
+  'gtk3'
+  'webkit2gtk-4.1'
+  'libayatana-appindicator'
+  'iproute2'
+  'util-linux'
+  'curl'
+  'polkit'
+  'xdg-utils'
+)
+makedepends=('git' 'cargo' 'nodejs' 'npm')
+optdepends=(
+  'lm_sensors: temperatures, fan speeds and voltages'
+  'smartmontools: drive health (SMART)'
+  'fio: disk benchmark'
+  'glmark2: graphics benchmark'
+  'nvidia-utils: NVIDIA graphics card readings'
+  'flatpak: list installed Flatpak apps'
+  'ookla-speedtest-bin: internet speed test against speedtest.net servers (AUR, not open source)'
+)
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!lto' '!debug')
+source=("$_pkgname::git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$_pkgname"
+  # The app's version, then the commit it was built from.
+  local version
+  version=$(sed -n 's/^  "version": "\(.*\)",$/\1/p' src-tauri/tauri.conf.json)
+  printf "%s.r%s.%s" "$version" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+prepare() {
+  cd "$_pkgname"
+  export npm_config_cache="$srcdir/npm-cache"
+  npm ci --no-audit --no-fund
+  cd src-tauri
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$_pkgname"
+  export npm_config_cache="$srcdir/npm-cache"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  # Builds the web interface, then the release binary with the interface built in.
+  npx tauri build --no-bundle -- --frozen
+}
+
+package() {
+  cd "$_pkgname"
+  install -Dm755 src-tauri/target/release/$_pkgname "$pkgdir/usr/bin/$_pkgname"
+  install -Dm644 packaging/linux/$_pkgname.desktop "$pkgdir/usr/share/applications/$_pkgname.desktop"
+  install -Dm644 src-tauri/icons/32x32.png "$pkgdir/usr/share/icons/hicolor/32x32/apps/$_pkgname.png"
+  install -Dm644 src-tauri/icons/128x128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/$_pkgname.png"
+  install -Dm644 src-tauri/icons/128x128@2x.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/$_pkgname.png"
+  install -Dm644 src-tauri/icons/icon.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/$_pkgname.png"
+  install -Dm644 README.md CREDITS.md -t "$pkgdir/usr/share/doc/$_pkgname"
+}

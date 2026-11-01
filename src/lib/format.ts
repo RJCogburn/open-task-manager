@@ -1,3 +1,5 @@
+import { settings } from "./settings.svelte";
+
 const UNITS = ["B", "KB", "MB", "GB", "TB", "PB"];
 
 /** 1536 → "1.5 KB", using 1024 steps like most file managers. */
@@ -13,9 +15,10 @@ export function bytes(n: number | null | undefined, digits = 1): string {
 
 export const rate = (n: number | null | undefined) => (n == null ? "—" : `${bytes(n)}/s`);
 
-/** Network speeds read better in bits. */
-export function bits(bytesPerSecond: number | null | undefined): string {
+/** Network speeds, in bits (the usual way) or bytes, as set in Settings. */
+export function netRate(bytesPerSecond: number | null | undefined): string {
   if (bytesPerSecond == null) return "—";
+  if (settings.networkUnit === "bytes") return rate(bytesPerSecond);
   let n = bytesPerSecond * 8;
   const units = ["bps", "Kbps", "Mbps", "Gbps"];
   let i = 0;
@@ -30,7 +33,11 @@ export const pct = (n: number | null | undefined, digits = 0) => (n == null ? "�
 
 export const ghz = (mhz: number | null | undefined) => (mhz == null || mhz === 0 ? "—" : `${(mhz / 1000).toFixed(2)} GHz`);
 
-export const celsius = (c: number | null | undefined) => (c == null ? "—" : `${c.toFixed(0)}°C`);
+/** A temperature given in Celsius, shown in the unit chosen in Settings. */
+export function temp(c: number | null | undefined): string {
+  if (c == null) return "—";
+  return settings.temperature === "f" ? `${((c * 9) / 5 + 32).toFixed(0)}°F` : `${c.toFixed(0)}°C`;
+}
 
 export const watts = (w: number | null | undefined) => (w == null ? "—" : `${w.toFixed(w < 10 ? 1 : 0)} W`);
 

@@ -1,5 +1,5 @@
 //! Installed software, from the package managers on this system: pacman,
-//! Flatpak and dpkg.
+//! dpkg, rpm and Flatpak.
 
 use std::collections::HashMap;
 
@@ -44,6 +44,14 @@ pub async fn installed_apps() -> Result<AppList, String> {
         if tools::which("dpkg-query").is_some() && tools::which("pacman").is_none() {
             apps.extend(dpkg());
             sources.push("dpkg");
+        }
+        // Arch and Debian can have the rpm tool without an rpm database in use.
+        let rpm_db = ["/usr/lib/sysimage/rpm", "/var/lib/rpm"].iter().any(|d| {
+            std::path::Path::new(d).join("rpmdb.sqlite").exists() || std::path::Path::new(d).join("Packages").exists()
+        });
+        if rpm_db && tools::which("rpm").is_some() && sources.iter().all(|s| *s == "flatpak") {
+            apps.extend(rpm());
+            sources.push("rpm");
         }
         apps.sort_by_key(|a| a.name.to_lowercase());
         Ok(AppList { apps, sources })
@@ -128,6 +136,30 @@ fn dpkg() -> Vec<App> {
                 explicit: true,
                 url: f[4].to_string(),
                 installed: String::new(),
+            })
+        })
+        .collect()
+}
+
+fn rpm() -> Vec<App> {
+    let text = run_c(
+        "rpm",
+        &["-qa", "--qf", "%{NAME}\t%{VERSION}-%{RELEASE}\t%{SIZE}\t%{SUMMARY}\t%{URL}\t%{INSTALLTIME:date}\n"],
+    )
+    .unwrap_or_default();
+    text.lines()
+        .filter_map(|line| {
+            let f: Vec<&str> = line.split('\t').collect();
+            // GPG keys are listed as packages too.
+            (f.len() >= 6 && f[0] != "gpg-pubkey").then(|| App {
+                name: f[0].to_string(),
+                version: f[1].to_string(),
+                description: f[3].to_string(),
+                size: f[2].parse().unwrap_or(0),
+                source: "rpm",
+                explicit: true,
+                url: f[4].replace("(none)", ""),
+                installed: f[5].to_string(),
             })
         })
         .collect()

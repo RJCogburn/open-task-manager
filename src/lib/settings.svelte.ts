@@ -1,0 +1,63 @@
+// Preferences that live in the window, saved to localStorage whenever one
+// changes. Settings the Rust side needs (logging, start at login) are kept
+// there instead; see the Settings page.
+
+export type ChartStyle = "smooth" | "straight" | "step" | "bars";
+
+export type Settings = {
+  intervalMs: number;
+  theme: "system" | "dark" | "light";
+  /** A page id, or "last" for wherever the window was when it closed. */
+  startPage: string;
+  lastPage: string;
+  chart: {
+    style: ChartStyle;
+    fill: boolean;
+    grid: boolean;
+    thickness: number;
+    /** How many samples each graph keeps. */
+    history: number;
+  };
+  temperature: "c" | "f";
+  networkUnit: "bits" | "bytes";
+  confirmEnd: boolean;
+  showIdleInterfaces: boolean;
+  rememberBenchmarks: boolean;
+  /** Which service the internet speed test uses; "auto" prefers Ookla when installed. */
+  speedTest: "auto" | "ookla" | "cloudflare";
+};
+
+const KEY = "otm.settings";
+
+export const defaults: Settings = {
+  intervalMs: 1000,
+  theme: "system",
+  startPage: "overview",
+  lastPage: "overview",
+  chart: { style: "smooth", fill: true, grid: true, thickness: 1.75, history: 120 },
+  temperature: "c",
+  networkUnit: "bits",
+  confirmEnd: true,
+  showIdleInterfaces: false,
+  rememberBenchmarks: true,
+  speedTest: "auto",
+};
+
+function load(): Settings {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    return { ...defaults, ...saved, chart: { ...defaults.chart, ...saved.chart } };
+  } catch {
+    return structuredClone(defaults);
+  }
+}
+
+export const settings = $state<Settings>(load());
+
+$effect.root(() => {
+  $effect(() => localStorage.setItem(KEY, JSON.stringify(settings)));
+});
+
+export function resetSettings() {
+  Object.assign(settings, structuredClone(defaults), { lastPage: settings.lastPage });
+}

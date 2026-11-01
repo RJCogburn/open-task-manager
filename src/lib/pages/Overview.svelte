@@ -3,7 +3,7 @@
   import Gauge from "../Gauge.svelte";
   import PageHeader from "../PageHeader.svelte";
   import { api, type Proc } from "../api";
-  import { bytes, celsius, duration, ghz, pct, rate, bits, watts } from "../format";
+  import { bytes, temp, duration, ghz, pct, rate, netRate, watts } from "../format";
   import { live, poll } from "../live.svelte";
 
   const s = $derived(live.sample);
@@ -35,7 +35,7 @@
           <h3>CPU</h3>
           <div class="sub" title={info?.cpuBrand}>{info?.cpuBrand}</div>
           <div class="facts">
-            <span>{ghz(freq)}</span><span>{celsius(s.cpuTemp)}</span><span>{s.cores.length} threads</span>
+            <span>{ghz(freq)}</span><span>{temp(s.cpuTemp)}</span><span>{s.cores.length} threads</span>
           </div>
         </div>
       </div>
@@ -64,7 +64,7 @@
             <h3>GPU · {g.vendor}</h3>
             <div class="sub" title={g.name}>{g.name}</div>
             <div class="facts">
-              <span>{bytes(g.memUsed)} / {bytes(g.memTotal)}</span><span>{celsius(g.temp)}</span><span>{watts(g.power)}</span>
+              <span>{bytes(g.memUsed)} / {bytes(g.memTotal)}</span><span>{temp(g.temp)}</span><span>{watts(g.power)}</span>
             </div>
           </div>
         </div>
@@ -102,8 +102,8 @@
           <div>
             <h3>Network · {n.name}</h3>
             <div class="facts big-facts">
-              <span><i style:background="var(--net)"></i>↓ {bits(n.rx)}</span>
-              <span><i style:background="var(--gpu)"></i>↑ {bits(n.tx)}</span>
+              <span><i style:background="var(--net)"></i>↓ {netRate(n.rx)}</span>
+              <span><i style:background="var(--gpu)"></i>↑ {netRate(n.tx)}</span>
             </div>
           </div>
         </div>
@@ -116,7 +116,7 @@
           tick={live.tick}
           height={90}
           max="auto"
-          format={bits}
+          format={netRate}
         />
       </section>
     {/each}

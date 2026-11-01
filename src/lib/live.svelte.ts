@@ -5,25 +5,16 @@
 import { untrack } from "svelte";
 import { listen } from "@tauri-apps/api/event";
 import { api, type Sample, type SystemInfo } from "./api";
+import { settings, type Settings } from "./settings.svelte";
 
-export const HISTORY = 120;
-
-const SETTINGS_KEY = "otm.settings";
-type Settings = { intervalMs: number; theme: "system" | "dark" | "light" };
-
-function loadSettings(): Settings {
-  try {
-    return { intervalMs: 1000, theme: "system", ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") };
-  } catch {
-    return { intervalMs: 1000, theme: "system" };
-  }
-}
+/** How many samples each graph keeps; set on the Settings page. */
+export const historyLength = () => settings.chart.history;
 
 class Live {
   sample = $state<Sample | null>(null);
   info = $state<SystemInfo | null>(null);
   tick = $state(0);
-  settings = $state<Settings>(loadSettings());
+  readonly settings = settings;
   private series = new Map<string, number[]>();
 
   /** The recorded values for a key, oldest first. Reading it in a template
@@ -40,7 +31,8 @@ class Live {
       this.series.set(key, s);
     }
     s.push(value ?? NaN);
-    if (s.length > HISTORY) s.shift();
+    const max = historyLength();
+    if (s.length > max) s.splice(0, s.length - max);
   }
 
   private record(x: Sample) {
@@ -73,33 +65,36 @@ class Live {
     this.applyTheme();
     await api.setInterval(this.settings.intervalMs);
     this.info = await api.systemInfo();
+    // History keeps recording while the window is hidden in the tray, but
+    // pages only redraw when it can be seen.
+    let latest: Sample | null = null;
+    const show = () => {
+      if (document.hidden || !latest) return;
+      this.sample = latest;
+      this.tick++;
+    };
+    document.addEventListener("visibilitychange", show);
     await listen<Sample>("sample", (e) => {
       this.record(e.payload);
-      this.sample = e.payload;
-      this.tick++;
+      latest = e.payload;
+      show();
     });
   }
 
   async setIntervalMs(ms: number) {
     this.settings.intervalMs = ms;
-    this.save();
     await api.setInterval(ms);
   }
 
   setTheme(theme: Settings["theme"]) {
     this.settings.theme = theme;
-    this.save();
     this.applyTheme();
   }
 
-  private applyTheme() {
+  applyTheme() {
     const prefersLight = matchMedia("(prefers-color-scheme: light)").matches;
     const theme = this.settings.theme === "system" ? (prefersLight ? "light" : "dark") : this.settings.theme;
     document.documentElement.dataset.theme = theme;
-  }
-
-  private save() {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
   }
 }
 

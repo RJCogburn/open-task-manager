@@ -2,7 +2,7 @@
   import Chart from "../Chart.svelte";
   import PageHeader from "../PageHeader.svelte";
   import { api, parseError, type Reading, type SensorReport } from "../api";
-  import { celsius, ghz, watts } from "../format";
+  import { temp, ghz, watts } from "../format";
   import { live, poll } from "../live.svelte";
 
   const s = $derived(live.sample);
@@ -33,7 +33,7 @@
   function display(r: Reading): string {
     switch (r.kind) {
       case "temperature":
-        return celsius(r.value);
+        return temp(r.value);
       case "power":
         return watts(r.value);
       case "fan":
@@ -67,9 +67,9 @@
 {#if s}
   <div class="grid" style="--min: 300px">
     <section class="card">
-      <div class="spread"><h3>CPU temperature</h3><b class="v" style:color="var(--temp)">{celsius(s.cpuTemp)}</b></div>
+      <div class="spread"><h3>CPU temperature</h3><b class="v" style:color="var(--temp)">{temp(s.cpuTemp)}</b></div>
       <div style="margin-top: 10px">
-        <Chart label="CPU temperature" series={[{ label: "CPU", data: live.history("cpuTemp"), color: "var(--temp)" }]} tick={live.tick} height={110} format={(v) => celsius(v)} />
+        <Chart label="CPU temperature" series={[{ label: "CPU", data: live.history("cpuTemp"), color: "var(--temp)" }]} tick={live.tick} height={110} format={(v) => temp(v)} />
       </div>
     </section>
     <section class="card">

@@ -5,6 +5,8 @@ import { api, type ScanFolder, type ScanProgress, type ScanSummary } from "./api
 
 class Scan {
   path = $state("");
+  /** The folder the current or last scan started from. */
+  scanned = $state("");
   progress = $state<ScanProgress | null>(null);
   running = $state(false);
   folder = $state<ScanFolder | null>(null);
@@ -22,16 +24,19 @@ class Scan {
     });
   }
 
-  async start() {
+  async start(path = this.path) {
+    this.path = path;
+    this.scanned = path.trim();
     this.error = "";
     this.folder = null;
     this.summary = null;
     this.progress = null;
     try {
       this.running = true;
-      await api.scanStart(this.path.trim());
+      await api.scanStart(this.scanned);
     } catch (e) {
       this.running = false;
+      this.scanned = "";
       this.error = String(e);
     }
   }

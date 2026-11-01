@@ -2,7 +2,7 @@
   import Chart from "../Chart.svelte";
   import Gauge from "../Gauge.svelte";
   import PageHeader from "../PageHeader.svelte";
-  import { bytes, celsius, pct, watts } from "../format";
+  import { bytes, temp, pct, watts } from "../format";
   import { live } from "../live.svelte";
 
   const s = $derived(live.sample);
@@ -31,7 +31,7 @@
         <div class="stats">
           <div class="stat"><span>Load</span><b>{pct(g.util)}</b></div>
           <div class="stat"><span>Video memory</span><b>{bytes(g.memUsed)} / {bytes(g.memTotal)}</b></div>
-          <div class="stat"><span>Temperature</span><b>{celsius(g.temp)}</b></div>
+          <div class="stat"><span>Temperature</span><b>{temp(g.temp)}</b></div>
           <div class="stat"><span>Power</span><b>{watts(g.power)}{g.powerLimit ? ` / ${watts(g.powerLimit)}` : ""}</b></div>
           <div class="stat"><span>Clock</span><b>{g.clockMhz != null ? `${g.clockMhz.toFixed(0)} MHz` : "—"}</b></div>
           {#if g.fan != null}<div class="stat"><span>Fan</span><b>{pct(g.fan)}</b></div>{/if}
@@ -60,7 +60,7 @@
           tick={live.tick}
           height={150}
           max={100}
-          format={(v) => celsius(v)}
+          format={(v) => temp(v)}
         />
       </div>
       <div>

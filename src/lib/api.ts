@@ -59,6 +59,41 @@ export type Mount = {
   removable: boolean;
 };
 
+export type DriveHealth = {
+  status: "good" | "warning" | "failing" | "unknown";
+  note: string;
+  needsAdmin: boolean;
+  temp: number | null;
+  powerOnHours: number | null;
+  wear: number | null;
+  spare: number | null;
+  mediaErrors: number | null;
+  badSectors: number | null;
+};
+export type DriveFilesystem = {
+  device: string;
+  label: string;
+  fileSystem: string;
+  mountPoints: string[];
+  total: number;
+  used: number | null;
+  available: number | null;
+  encrypted: boolean;
+};
+export type Drive = {
+  name: string;
+  model: string;
+  vendor: string;
+  serial: string;
+  revision: string;
+  size: number;
+  transport: string;
+  rotational: boolean;
+  removable: boolean;
+  filesystems: DriveFilesystem[];
+  health: DriveHealth;
+};
+
 export type Proc = {
   pid: number;
   ppid: number | null;
@@ -125,25 +160,93 @@ export type CpuScore = { single: number; multi: number; threads: number };
 export type MemoryScore = { copyGbps: number };
 export type DiskResult = { name: string; bandwidth: number; iops: number };
 export type GpuScore = { score: number; renderer: string };
-export type NetScore = { latencyMs: number; downloadMbps: number; uploadMbps: number };
+export type SpeedProvider = "auto" | "ookla" | "cloudflare";
+export type NetScore = {
+  latencyMs: number;
+  downloadMbps: number;
+  uploadMbps: number;
+  provider: "ookla" | "cloudflare";
+  jitterMs: number | null;
+  server: string | null;
+  isp: string | null;
+  url: string | null;
+};
 
 export type App = {
   name: string;
   version: string;
   description: string;
   size: number;
-  source: "pacman" | "flatpak" | "dpkg";
+  source: "pacman" | "flatpak" | "dpkg" | "rpm";
   explicit: boolean;
   url: string;
   installed: string;
 };
 export type AppList = { apps: App[]; sources: string[] };
 
-export type ToolStatus = { program: string; installed: boolean; installHint: string | null };
+export type Origin = {
+  kind:
+    | "package"
+    | "flatpak"
+    | "snap"
+    | "appimage"
+    | "home"
+    | "manual"
+    | "elsewhere"
+    | "unpackaged"
+    | "temporary"
+    | "deleted"
+    | "hidden"
+    | "unchecked";
+  detail: string;
+  suspicious: boolean;
+};
+export type NetUsage = { rx: number; tx: number; connections: number };
+export type NetProcess = {
+  pid: number | null;
+  name: string;
+  exe: string | null;
+  byInterface: Record<string, NetUsage>;
+  unmeasured: number;
+  listening: number;
+  remotes: string[];
+  origin: Origin;
+};
+export type ProcessSource = {
+  pid: number;
+  name: string;
+  exe: string | null;
+  folder: string | null;
+  command: string;
+  cwd: string | null;
+  user: string;
+  parent: string | null;
+  started: number;
+  origin: Origin;
+};
+
+export type LogConfig = {
+  enabled: boolean;
+  cpu: boolean;
+  memory: boolean;
+  disks: boolean;
+  network: boolean;
+  gpu: boolean;
+  temperatures: boolean;
+  every: number;
+  keepDays: number;
+};
+export type LogStatus = { config: LogConfig; folder: string; size: number; files: number };
+export type Autostart = { enabled: boolean; minimized: boolean; program: string };
+export type TrayConfig = { enabled: boolean; closeToTray: boolean; showUsage: boolean };
+
+export type ToolStatus ={ program: string; installed: boolean; installHint: string | null };
 
 export const api = {
   systemInfo: () => invoke<SystemInfo>("system_info"),
   mounts: () => invoke<Mount[]>("mounts"),
+  drives: () => invoke<Drive[]>("drives"),
+  driveHealthAdmin: () => invoke<void>("drive_health_admin"),
   setInterval: (ms: number) => invoke<void>("set_interval", { ms }),
   processes: () => invoke<Proc[]>("processes"),
   endProcess: (pid: number, force: boolean) => invoke<void>("end_process", { pid, force }),
@@ -160,10 +263,18 @@ export const api = {
   benchMemory: () => invoke<MemoryScore>("bench_memory"),
   benchDisk: (folder: string) => invoke<DiskResult[]>("bench_disk", { folder }),
   benchGpu: () => invoke<GpuScore>("bench_gpu"),
-  benchNetwork: () => invoke<NetScore>("bench_network"),
+  benchNetwork: (provider: SpeedProvider) => invoke<NetScore>("bench_network", { provider }),
   installedApps: () => invoke<AppList>("installed_apps"),
   toolStatus: () => invoke<ToolStatus[]>("tool_status"),
   openFolder: (path: string) => invoke<void>("open_folder", { path }),
+  netActivity: () => invoke<NetProcess[]>("net_activity"),
+  processSource: (pid: number) => invoke<ProcessSource>("process_source", { pid }),
+  loggingGet: () => invoke<LogStatus>("logging_get"),
+  loggingSet: (config: LogConfig) => invoke<void>("logging_set", { config }),
+  trayGet: () => invoke<TrayConfig>("tray_get"),
+  traySet: (config: TrayConfig) => invoke<void>("tray_set", { config }),
+  autostartGet: () => invoke<Autostart>("autostart_get"),
+  autostartSet: (enabled: boolean, minimized: boolean) => invoke<Autostart>("autostart_set", { enabled, minimized }),
 };
 
 /** Errors from the Rust side carry a kind before the first colon. */

@@ -2,6 +2,7 @@
   import PageHeader from "../PageHeader.svelte";
   import { api, parseError, type Connection } from "../api";
   import { poll } from "../live.svelte";
+  import { settings } from "../settings.svelte";
 
   let list = $state<Connection[]>([]);
   let error = $state("");
@@ -48,7 +49,7 @@
 
   async function end(c: Connection) {
     if (c.pid == null) return;
-    if (!confirm(`End ${c.process} (${c.pid})? This closes all of its connections.`)) return;
+    if (settings.confirmEnd && !confirm(`End ${c.process} (${c.pid})? This closes all of its connections.`)) return;
     try {
       await api.endProcess(c.pid, false);
     } catch (e) {

@@ -29,26 +29,38 @@ pub fn missing(program: &str) -> String {
 
 /// The package that provides each tool, for the package manager on this system.
 fn install_hint(program: &str) -> Option<String> {
-    let package = |arch: &str, debian: &str, fedora: &str| {
+    let package = |arch: &str, debian: &str, fedora: &str, suse: &str| {
         if which("pacman").is_some() {
             Some(format!("sudo pacman -S {arch}"))
         } else if which("apt").is_some() {
             Some(format!("sudo apt install {debian}"))
+        } else if which("zypper").is_some() {
+            Some(format!("sudo zypper install {suse}"))
         } else if which("dnf").is_some() {
             Some(format!("sudo dnf install {fedora}"))
         } else {
             None
         }
     };
+    if program == "speedtest" {
+        // Ookla ships it themselves rather than through distribution repositories.
+        return Some(if which("pacman").is_some() {
+            "an AUR helper, e.g. yay -S ookla-speedtest-bin, or see https://www.speedtest.net/apps/cli".into()
+        } else {
+            "the instructions at https://www.speedtest.net/apps/cli".into()
+        });
+    }
     match program {
-        "sensors" => package("lm_sensors", "lm-sensors", "lm_sensors"),
-        "ss" => package("iproute2", "iproute2", "iproute"),
-        "fio" => package("fio", "fio", "fio"),
-        "glmark2" => package("glmark2", "glmark2", "glmark2"),
-        "curl" => package("curl", "curl", "curl"),
-        "lspci" => package("pciutils", "pciutils", "pciutils"),
-        "pkexec" => package("polkit", "pkexec", "polkit"),
-        "xdg-open" => package("xdg-utils", "xdg-utils", "xdg-utils"),
+        "sensors" => package("lm_sensors", "lm-sensors", "lm_sensors", "sensors"),
+        "ss" => package("iproute2", "iproute2", "iproute", "iproute2"),
+        "fio" => package("fio", "fio", "fio", "fio"),
+        "glmark2" => package("glmark2", "glmark2", "glmark2", "glmark2"),
+        "curl" => package("curl", "curl", "curl", "curl"),
+        "lspci" => package("pciutils", "pciutils", "pciutils", "pciutils"),
+        "pkexec" => package("polkit", "pkexec", "polkit", "polkit"),
+        "smartctl" => package("smartmontools", "smartmontools", "smartmontools", "smartmontools"),
+        "lsblk" => package("util-linux", "util-linux", "util-linux", "util-linux"),
+        "xdg-open" => package("xdg-utils", "xdg-utils", "xdg-utils", "xdg-utils"),
         _ => None,
     }
 }
@@ -66,12 +78,16 @@ const TOOLS: &[&str] = &[
     "ss",
     "nvidia-smi",
     "lspci",
+    "lsblk",
+    "smartctl",
     "curl",
+    "speedtest",
     "fio",
     "glmark2",
     "pacman",
     "flatpak",
     "dpkg-query",
+    "rpm",
     "pkexec",
     "xdg-open",
 ];

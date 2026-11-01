@@ -123,6 +123,7 @@
 
   const endTask = (force: boolean) => {
     const p = chosen!;
+    if (live.settings.confirmEnd && !confirm(`${force ? "Kill" : "End"} ${p.name} (${p.pid})?`)) return;
     return act(
       `${force ? "Killed" : "Asked to end"} ${p.name} (${p.pid}).`,
       () => api.endProcess(p.pid, force),

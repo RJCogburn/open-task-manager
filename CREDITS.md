@@ -14,14 +14,18 @@ not copied into it, so their licenses apply to them, not to this app.
 | [lm-sensors](https://github.com/lm-sensors/lm-sensors) | Temperatures, fan speeds, voltages and power (`sensors`) | GPL-2.0-only OR LGPL-2.1-only |
 | [iproute2](https://git.kernel.org/pub/scm/network/iproute2/iproute2.git) | Open network connections and their owners (`ss`) | GPL-2.0-or-later |
 | [pciutils](https://mj.ucw.cz/sw/pciutils/) | Graphics card names (`lspci`) | GPL-2.0-only |
+| [util-linux](https://github.com/util-linux/util-linux) | Drives, their models and filesystems (`lsblk`) | GPL-2.0-or-later |
+| [smartmontools](https://www.smartmontools.org/) | Drive health from SMART data (`smartctl`) | GPL-2.0-or-later |
 | [fio](https://github.com/axboe/fio) | Disk benchmark | GPL-2.0-only |
 | [glmark2](https://github.com/glmark2/glmark2) | Graphics benchmark (OpenGL) | GPL-3.0 |
 | [curl](https://curl.se/) | Internet speed test transfers | curl (MIT-style) |
 | [pacman](https://pacman.archlinux.page/) | Installed packages on Arch-based systems | GPL-2.0-or-later |
 | [Flatpak](https://flatpak.org/) | Installed Flatpak apps | LGPL-2.1-or-later |
 | [dpkg](https://wiki.debian.org/Teams/Dpkg) | Installed packages on Debian-based systems | GPL-2.0-or-later |
+| [RPM](https://rpm.org/) | Installed packages on Fedora, openSUSE and other RPM-based systems | GPL-2.0-or-later |
 | [polkit](https://github.com/polkit-org/polkit) | Password prompt for acting on other users' processes (`pkexec`) | LGPL-2.0-or-later |
 | [xdg-utils](https://gitlab.freedesktop.org/xdg/xdg-utils) | Opening folders in the file manager (`xdg-open`) | MIT |
+| [Speedtest CLI by Ookla](https://www.speedtest.net/apps/cli) | Internet speed test against speedtest.net servers (`speedtest`), only if you install it | Proprietary (not open source) |
 | [NVIDIA System Management Interface](https://developer.nvidia.com/system-management-interface) | NVIDIA GPU readings (`nvidia-smi`), only if the NVIDIA driver is installed | Proprietary (not open source) |
 
 ## Data it reads

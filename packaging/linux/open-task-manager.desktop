@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Open Task Manager
+GenericName=Task Manager
+Comment=See and manage what your computer is doing
+Exec=open-task-manager
+Icon=open-task-manager
+Terminal=false
+Categories=System;Monitor;Utility;
+Keywords=task;process;system;monitor;cpu;memory;disk;network;gpu;sensors;
