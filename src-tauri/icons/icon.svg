@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b97ff"/>
+      <stop offset="1" stop-color="#2f5fd8"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <!-- A heartbeat: flat, a small bump, the tall spike and its dip, a softer bump, flat. -->
+    <path id="beat" d="M68 282 H148 Q164 282 174 260 Q184 238 196 260 Q206 282 220 282 L238 308 L276 102 L316 386 L340 282 H352 Q372 282 384 248 Q396 220 408 248 Q420 282 444 282"/>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#tile)"/>
+  <rect x="18" y="18" width="476" height="476" rx="110" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="4"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <use xlink:href="#beat" stroke="#e3edff" stroke-opacity="0.6" stroke-width="46" filter="url(#glow)"/>
+    <use xlink:href="#beat" stroke="#ffffff" stroke-width="30"/>
+  </g>
+</svg>

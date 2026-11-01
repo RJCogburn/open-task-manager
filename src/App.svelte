@@ -66,7 +66,7 @@
     <div class="brand">
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <rect x="1" y="1" width="30" height="30" rx="8" />
-        <path d="M6 18h5l2.5-7 4 13 3-8H26" />
+        <path d="M4.3 17.6h5q1 0 1.6-1.4t1.5 0q.6 1.4 1.4 1.4l1.1 1.6 2.4-12.8 2.5 17.7 1.5-6.5h.8q1.2 0 2-2.1t1.5 0q.7 2.1 2.2 2.1" />
       </svg>
       <div>
         <b>Open Task Manager</b>
