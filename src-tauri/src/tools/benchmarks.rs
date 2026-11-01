@@ -1,16 +1,15 @@
 //! Benchmarks. CPU and memory run built-in workloads; disk uses fio, GPU uses
-//! glmark2 and internet speed uses curl against Cloudflare's speed test.
+//! glmark2, and internet speed uses Ookla's speedtest when installed or curl
+//! against LibreSpeed's servers (librespeed.rs).
 
-use std::io::{BufRead, BufReader, Read, Write};
-use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::programs;
+
+mod librespeed;
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
@@ -187,7 +186,7 @@ pub struct NetScore {
     latency_ms: f64,
     download_mbps: f64,
     upload_mbps: f64,
-    /// "ookla" or "cloudflare".
+    /// "ookla" or "librespeed".
     provider: &'static str,
     jitter_ms: Option<f64>,
     server: Option<String>,
@@ -197,15 +196,15 @@ pub struct NetScore {
 }
 
 /// Speed test with Ookla's speedtest program when asked for, or when "auto"
-/// and it is installed; Cloudflare's server otherwise.
+/// and it is installed; LibreSpeed's nearest server otherwise.
 #[tauri::command]
 pub async fn bench_network(provider: String) -> Result<NetScore, String> {
     let ookla = match provider.as_str() {
         "ookla" => true,
-        "cloudflare" => false,
+        "librespeed" | "cloudflare" => false,
         _ => programs::which("speedtest").is_some(),
     };
-    if ookla { blocking(ookla_test).await } else { blocking(cloudflare_test).await }
+    if ookla { blocking(ookla_test).await } else { blocking(librespeed::test).await }
 }
 
 /// Ookla's own command-line client, which picks a nearby speedtest.net server.
@@ -243,189 +242,6 @@ fn parse_ookla(stdout: &[u8], stderr: &[u8]) -> Result<NetScore, String> {
         isp: result["isp"].as_str().map(str::to_string),
         url: result["result"]["url"].as_str().map(str::to_string),
     })
-}
-
-const SPEED: &str = "https://speed.cloudflare.com";
-/// Parallel connections, as browser speed tests use: one TCP stream rarely fills a fast line.
-const STREAMS: usize = 6;
-/// Connections ramp up (TCP slow start) before the measured window begins.
-const WARMUP: Duration = Duration::from_secs(2);
-/// The longest the measured part runs; a fast line reaches its data budget sooner.
-const WINDOW: Duration = Duration::from_secs(8);
-const CHUNK: &str = "25000000";
-
-/// Latency, download and upload against speed.cloudflare.com, using curl.
-fn cloudflare_test() -> Result<NetScore, String> {
-    {
-        // TCP connection setup takes one round trip, without any server work in it.
-        let mut latency = f64::MAX;
-        for _ in 0..5 {
-            let out = programs::run(
-                "curl",
-                &[
-                    "-s",
-                    "-o",
-                    "/dev/null",
-                    "-w",
-                    "%{time_namelookup} %{time_connect}",
-                    &format!("{SPEED}/__down?bytes=0"),
-                ],
-            )?;
-            let text = String::from_utf8_lossy(&out.stdout);
-            let mut t = text.split_whitespace().filter_map(|v| v.parse::<f64>().ok());
-            if let (Some(dns), Some(connect)) = (t.next(), t.next())
-                && connect > dns
-            {
-                latency = latency.min((connect - dns) * 1000.0);
-            }
-        }
-        if latency == f64::MAX {
-            return Err("Could not reach speed.cloudflare.com.".into());
-        }
-        let download = throughput(false)?;
-        let upload = throughput(true)?;
-        Ok(NetScore {
-            latency_ms: latency,
-            download_mbps: download * 8.0 / 1e6,
-            upload_mbps: upload * 8.0 / 1e6,
-            provider: "cloudflare",
-            jitter_ms: None,
-            server: Some("Cloudflare".into()),
-            isp: None,
-            url: None,
-        })
-    }
-}
-
-/// Bytes per second over several connections at once, after a warm-up.
-///
-/// Downloads are counted as they arrive through curl's output. Uploads stream
-/// from a pipe and count only what the server confirms it received when each
-/// upload ends. Every response is checked, so a refused test is reported
-/// rather than measured as a slow line.
-fn throughput(upload: bool) -> Result<f64, String> {
-    if programs::which("curl").is_none() {
-        return Err(programs::missing("curl"));
-    }
-    let moved = Arc::new(AtomicU64::new(0));
-    let stop = Arc::new(AtomicBool::new(false));
-    // HTTP status of every finished request, and for uploads how much the server got.
-    let statuses = Arc::new(Mutex::new(Vec::<(u32, u64)>::new()));
-    let mut children = Vec::new();
-    let mut pumps = Vec::new();
-    for _ in 0..STREAMS {
-        let mut command = Command::new("curl");
-        command.arg("-s");
-        if upload {
-            // -T - sends stdin as it arrives instead of reading it all first.
-            command.args(["-o", "/dev/null", "-w", "%{http_code} %{size_upload}\n", "-X", "POST", "-T", "-"]);
-            command.arg(format!("{SPEED}/__up"));
-            command.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
-        } else {
-            // Back-to-back requests on one kept-alive connection; bodies go to
-            // stdout to be counted, statuses to stderr.
-            let url = format!("{SPEED}/__down?bytes={CHUNK}");
-            command.args(["-w", "%{stderr}%{http_code} 0\n"]).args(std::iter::repeat_n(url.as_str(), 20));
-            command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
-        }
-        let mut child = command.spawn().map_err(|e| format!("Could not run curl: {e}"))?;
-
-        let report = if upload {
-            child.stdout.take().map(|o| Box::new(o) as Box<dyn Read + Send>)
-        } else {
-            child.stderr.take().map(|e| Box::new(e) as Box<dyn Read + Send>)
-        }
-        .ok_or("curl has no output")?;
-        let list = statuses.clone();
-        pumps.push(std::thread::spawn(move || {
-            for line in BufReader::new(report).lines().map_while(Result::ok) {
-                let mut f = line.split_whitespace().filter_map(|v| v.parse::<u64>().ok());
-                if let (Some(code), Some(size)) = (f.next(), f.next()) {
-                    list.lock().unwrap().push((code as u32, size));
-                }
-            }
-        }));
-
-        let (moved, stop) = (moved.clone(), stop.clone());
-        pumps.push(if upload {
-            let mut stdin = child.stdin.take().ok_or("curl has no input")?;
-            std::thread::spawn(move || {
-                let chunk = vec![0u8; 64 * 1024];
-                while !stop.load(Ordering::Relaxed) && stdin.write_all(&chunk).is_ok() {
-                    moved.fetch_add(chunk.len() as u64, Ordering::Relaxed);
-                }
-                // Closing stdin ends the upload, and curl reports what the server took.
-            })
-        } else {
-            let mut stdout = child.stdout.take().ok_or("curl has no output")?;
-            std::thread::spawn(move || {
-                let mut buf = vec![0u8; 64 * 1024];
-                while !stop.load(Ordering::Relaxed) {
-                    match stdout.read(&mut buf) {
-                        Ok(0) | Err(_) => break,
-                        Ok(n) => moved.fetch_add(n as u64, Ordering::Relaxed),
-                    };
-                }
-            })
-        });
-        children.push(child);
-    }
-
-    // Stop early on a fast line: the server limits how much one connection may pull.
-    let budget = if upload { 100_000_000 } else { 200_000_000 };
-    let began = Instant::now();
-    let finished =
-        |children: &mut Vec<std::process::Child>| children.iter_mut().all(|c| c.try_wait().ok().flatten().is_some());
-    while began.elapsed() < WARMUP && moved.load(Ordering::Relaxed) < budget / 6 && !finished(&mut children) {
-        std::thread::sleep(Duration::from_millis(25));
-    }
-    let (start, before) = (Instant::now(), moved.load(Ordering::Relaxed));
-    while start.elapsed() < WINDOW && moved.load(Ordering::Relaxed) - before < budget && !finished(&mut children) {
-        std::thread::sleep(Duration::from_millis(25));
-    }
-    let (mut seconds, mut bytes) = (start.elapsed().as_secs_f64(), moved.load(Ordering::Relaxed) - before);
-    stop.store(true, Ordering::Relaxed);
-
-    if upload {
-        // Wait for the server's answer to each upload, then count only what it confirmed.
-        let deadline = Instant::now() + Duration::from_secs(15);
-        for child in &mut children {
-            while child.try_wait().ok().flatten().is_none() && Instant::now() < deadline {
-                std::thread::sleep(Duration::from_millis(20));
-            }
-        }
-        seconds = start.elapsed().as_secs_f64();
-    }
-    for child in &mut children {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
-    for pump in pumps {
-        let _ = pump.join();
-    }
-
-    let statuses = statuses.lock().unwrap();
-    if let Some(&(code, _)) = statuses.iter().find(|(code, _)| *code != 200) {
-        return Err(match code {
-            429 => {
-                "Cloudflare is limiting speed tests from your connection right now. Wait a few minutes and try again."
-                    .into()
-            }
-            0 => "The connection to speed.cloudflare.com dropped during the test.".into(),
-            _ => format!("speed.cloudflare.com refused the test (HTTP {code})."),
-        });
-    }
-    if upload {
-        let confirmed: u64 = statuses.iter().map(|(_, size)| size).sum();
-        if statuses.len() < STREAMS {
-            return Err("The server did not confirm the upload. Try again.".into());
-        }
-        bytes = confirmed.saturating_sub(before);
-    }
-    if bytes < 64 * 1024 {
-        return Err(format!("No data moved during the {}. Try again.", if upload { "upload" } else { "download" }));
-    }
-    Ok(bytes as f64 / seconds)
 }
 
 #[cfg(test)]

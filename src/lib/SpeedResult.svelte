@@ -11,7 +11,9 @@
 
   const r = $derived(benchmarks.results.network);
   const mbps = (n: number) => `${n.toFixed(n < 10 ? 1 : 0)} Mbps`;
-  const by = $derived(r?.provider === "ookla" ? "Speedtest by Ookla" : "Cloudflare");
+  const names = { ookla: "Speedtest by Ookla", librespeed: "LibreSpeed", cloudflare: "Cloudflare" };
+  // A result saved by an older version may be Cloudflare's.
+  const by = $derived(r ? names[r.provider] : "");
 </script>
 
 {#if r}
@@ -22,18 +24,18 @@
     {#if r.jitterMs != null}<div><span>Jitter</span><b>{r.jitterMs.toFixed(1)} ms</b></div>{/if}
   </div>
   <p class="faint meta">
-    {by}{r.server && r.provider === "ookla" ? ` · ${r.server}` : ""}{r.isp ? ` · ${r.isp}` : ""} ·
+    {by}{r.server ? ` · ${r.server}` : ""}{r.isp ? ` · ${r.isp}` : ""} ·
     {new Date(r.at).toLocaleString()}
     {#if r.url}· <a href={r.url} use:external>result on speedtest.net</a>{/if}
   </p>
 {/if}
 
-{#if ookla && !ookla.installed && settings.speedTest !== "cloudflare"}
+{#if ookla && !ookla.installed && settings.speedTest !== "librespeed"}
   <p class="faint meta">
     For results that match speedtest.net, install Ookla's speedtest command: {ookla.installHint}. It is free but not
     open source.
   </p>
-{:else if ookla?.installed && settings.speedTest !== "cloudflare"}
+{:else if ookla?.installed && settings.speedTest !== "librespeed"}
   <p class="faint meta">
     Uses Ookla's speedtest command, which means accepting Ookla's
     <a href="https://www.speedtest.net/about/eula" use:external>license</a> and

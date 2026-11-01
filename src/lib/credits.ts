@@ -155,13 +155,12 @@ export const credits = {
     program: "speedtest",
     proprietary: true,
   },
-  cloudflare: {
-    name: "Cloudflare Speed Test",
-    role: "The server the internet benchmark downloads from and uploads to (speed.cloudflare.com)",
-    license: "Online service (not open source)",
-    url: "https://speed.cloudflare.com/",
+  librespeed: {
+    name: "LibreSpeed",
+    role: "Internet speed test: the method and the public test servers, which volunteers and sponsors run (librespeed.org)",
+    license: "LGPL-3.0-or-later (servers run by their sponsors)",
+    url: "https://librespeed.org/",
     group: "service",
-    proprietary: true,
   },
   githubReleases: {
     name: "GitHub Releases",

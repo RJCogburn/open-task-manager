@@ -7,6 +7,6 @@ export default defineTool({
   section: "tools",
   order: 30,
   icon: "M4 20a8 8 0 1 1 16 0M12 20l4-6M4 20h16",
-  sources: ["fio", "glmark2", "ookla", "curl", "cloudflare"],
+  sources: ["fio", "glmark2", "ookla", "curl", "librespeed"],
   page: Page,
 });

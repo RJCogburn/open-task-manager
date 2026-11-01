@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { card } from "$lib/arrange.svelte";
+  import { board, card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import ScanResults from "$lib/ScanResults.svelte";
@@ -97,14 +97,14 @@
 {/if}
 {#if healthError}<div class="notice bad" style="margin-bottom: 14px">{healthError}</div>{/if}
 
-<div class="grid" style="--min: 440px">
+<div use:board={{ group: "disks", min: 440 }}>
   {#each drives as d (d.name)}
     {@const sp = space(d)}
     {@const h = d.health}
     {@const rw = io.get(d.name)}
     {@const open = expanded === d.name}
     {@const target = targetOf(d)}
-    <section class="card drive" use:card={{ group: "disks", id: d.name }} class:open>
+    <section class="card drive" use:card={{ group: "disks", id: d.name }} class:open data-wide={open ? "true" : undefined}>
       <div class="spread top">
         <div class="name">
           <h3>/dev/{d.name} · {kind(d)}{d.removable ? " · removable" : ""}</h3>
@@ -267,10 +267,6 @@
 {/if}
 
 <style>
-  .drive.open {
-    grid-column: 1 / -1;
-  }
-
   .top {
     align-items: flex-start;
   }

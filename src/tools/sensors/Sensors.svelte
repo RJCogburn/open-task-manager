@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { card } from "$lib/arrange.svelte";
+  import { board, card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, parseError, type Reading, type SensorReport } from "$lib/api";
@@ -65,7 +65,7 @@
 />
 
 {#if s}
-  <div class="grid" style="--min: 300px">
+  <div use:board={{ group: "sensors", min: 300 }}>
     <section class="card" use:card={{ group: "sensors", id: "cpu-temp" }}>
       <div class="spread"><h3>CPU temperature</h3><b class="v" style:color="var(--temp)">{temp(s.cpuTemp)}</b></div>
       <div style="margin-top: 10px">
@@ -99,7 +99,7 @@
 {/if}
 
 {#if report}
-  <div class="chips">
+  <div class="chips" use:board={{ group: "sensors:chips", min: 300 }}>
     {#each report.chips as chip (chip.id)}
       <section class="card chip" use:card={{ group: "sensors:chips", id: chip.id }}>
         <h3>{chip.name.split(" · ")[0]}</h3>
@@ -137,10 +137,6 @@
   }
 
   .chips {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 14px;
-    align-items: start;
     margin-top: 14px;
   }
 

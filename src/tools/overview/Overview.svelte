@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { card } from "$lib/arrange.svelte";
+  import { board, card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import Gauge from "$lib/Gauge.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
@@ -27,7 +27,7 @@
 {#if !s}
   <div class="empty"><span class="spinner"></span> Collecting the first readings…</div>
 {:else}
-  <div class="grid" style="--min: 330px">
+  <div use:board={{ group: "overview", min: 330 }}>
     <section class="card tile" use:card={{ group: "overview", id: "cpu" }}>
       <div class="head">
         <Gauge value={s.cpu} color="var(--cpu)" label="CPU usage" />

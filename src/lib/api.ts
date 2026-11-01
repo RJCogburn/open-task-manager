@@ -164,12 +164,12 @@ export type CpuScore = { single: number; multi: number; threads: number };
 export type MemoryScore = { copyGbps: number };
 export type DiskResult = { name: string; bandwidth: number; iops: number };
 export type GpuScore = { score: number; renderer: string };
-export type SpeedProvider = "auto" | "ookla" | "cloudflare";
+export type SpeedProvider = "auto" | "ookla" | "librespeed";
 export type NetScore = {
   latencyMs: number;
   downloadMbps: number;
   uploadMbps: number;
-  provider: "ookla" | "cloudflare";
+  provider: "ookla" | "librespeed" | "cloudflare";
   jitterMs: number | null;
   server: string | null;
   isp: string | null;

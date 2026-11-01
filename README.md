@@ -13,12 +13,34 @@ system already has in one window, with live graphs.
 - **Power & Thermals**: every sensor lm-sensors can see, plus GPU power and CPU power (RAPL, needs root)
 - **Connections**: which programs hold which sockets, and which ones other computers can reach
 - **Disk Space**: a fast, parallel scan in the spirit of ncdu and Filelight; browse folders, largest files and space by file type
-- **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (curl + Cloudflare)
+- **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (LibreSpeed, or Ookla's speedtest if installed)
 - **Installed Apps**: pacman, dpkg, rpm and Flatpak packages by size
 - **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
 - **Desktop widgets**: a see-through panel with the readings you pick, and a [readings feed](docs/readings-feed.md) so Plasma widgets, GNOME extensions or conky can show them too
 - **Updates**: tells you when a new version is out; installs it on request or automatically (signed updates for the AppImage, .deb and .rpm)
 - **Settings**: graph style, units, start page, start at login, and logging chosen hardware to CSV files
+
+![Overview: every processor, graphics card, drive and network interface at a glance](docs/screenshots/overview.png)
+
+<details>
+<summary>More screenshots</summary>
+
+**Disks**: each drive's model, space, temperature and health
+![Disks page](docs/screenshots/disks.png)
+
+**Processes**: sort, search, end or change priority
+![Processes page](docs/screenshots/processes.png)
+
+**Connections**: which programs are on the network, and who can reach them
+![Connections page](docs/screenshots/connections.png)
+
+**Memory**
+![Memory page](docs/screenshots/memory.png)
+
+**GPU**: NVIDIA and AMD side by side
+![GPU page](docs/screenshots/gpu.png)
+
+</details>
 
 No account, no telemetry and no paid tier. The app contacts the internet only
 when you run the internet speed test, and, if you agree to it, to ask GitHub

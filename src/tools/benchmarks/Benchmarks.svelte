@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { card } from "$lib/arrange.svelte";
+  import { board, card } from "$lib/arrange.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, type ToolStatus } from "$lib/api";
   import SpeedResult from "$lib/SpeedResult.svelte";
@@ -52,7 +52,7 @@
   </button>
 {/snippet}
 
-<div class="grid" style="--min: 380px">
+<div use:board={{ group: "benchmarks", min: 380 }}>
   <section class="card bench" use:card={{ group: "benchmarks", id: "cpu" }}>
     <div class="spread">
       <div><h3>Processor</h3><p class="muted">Integer and floating-point work for 3 seconds on one thread, then on all {live.info?.logicalCores ?? ""}.</p></div>
@@ -129,7 +129,7 @@
         <h3>Internet</h3>
         <p class="muted">
           With Ookla's speedtest command when it is installed, the same test as speedtest.net. Otherwise curl
-          measures against Cloudflare's server over 6 connections, using up to about 250 MB down and 120 MB up.
+          measures against the nearest LibreSpeed server over 6 connections, using up to about 450 MB down and 160 MB up.
         </p>
       </div>
       {@render button("network", "Run", () => run("network", () => api.benchNetwork(settings.speedTest)))}

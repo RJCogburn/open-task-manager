@@ -40,7 +40,7 @@ Contacted only when you start the speed test, or check for updates (daily only i
 
 | Service | Used for | Terms |
 |---|---|---|
-| [Cloudflare Speed Test](https://speed.cloudflare.com/) | Download and upload server for the internet benchmark | Online service (not open source) |
+| [LibreSpeed](https://librespeed.org/) | Internet speed test method and public test servers, run by volunteers and sponsors | LGPL-3.0-or-later (servers run by their sponsors) |
 | [GitHub Releases](https://github.com/RJCogburn/open-task-manager/releases) | Where new versions are published and checked for | Online service (not open source) |
 
 ## Ideas borrowed from

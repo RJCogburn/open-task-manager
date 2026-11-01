@@ -14,6 +14,6 @@ export default defineTool({
     const s = live.sample;
     return s ? rate(s.nets.reduce((a, n) => a + n.rx + n.tx, 0)) : "";
   },
-  sources: ["sysinfo", "iproute2", "ookla", "cloudflare"],
+  sources: ["sysinfo", "iproute2", "ookla", "librespeed"],
   page: Page,
 });

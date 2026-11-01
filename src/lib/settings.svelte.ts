@@ -24,9 +24,11 @@ export type Settings = {
   showIdleInterfaces: boolean;
   rememberBenchmarks: boolean;
   /** Which service the internet speed test uses; "auto" prefers Ookla when installed. */
-  speedTest: "auto" | "ookla" | "cloudflare";
+  speedTest: "auto" | "ookla" | "librespeed";
   /** The order of cards in each group, as the user arranged them. */
   cardOrder: Record<string, string[]>;
+  /** Each board's columns of card ids, as the user arranged them. */
+  cardLayout: Record<string, string[][]>;
   updates: {
     /** null until the user has been asked; checking contacts GitHub. */
     autoCheck: boolean | null;
@@ -53,6 +55,7 @@ export const defaults: Settings = {
   rememberBenchmarks: true,
   speedTest: "auto",
   cardOrder: {},
+  cardLayout: {},
   updates: { autoCheck: null, autoInstall: false, lastCheck: 0, dismissed: "" },
 };
 
@@ -64,6 +67,8 @@ function load(): Settings {
       ...saved,
       chart: { ...defaults.chart, ...saved.chart },
       updates: { ...defaults.updates, ...saved.updates },
+      // Cloudflare was the speed test before LibreSpeed.
+      speedTest: saved.speedTest === "cloudflare" ? "librespeed" : (saved.speedTest ?? defaults.speedTest),
     };
   } catch {
     return structuredClone(defaults);

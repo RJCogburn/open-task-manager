@@ -76,11 +76,18 @@ body {
   overflow: hidden;
 }
 
-/* Cards one above the other, in an order the user can arrange. */
-.card-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+/* Cards on a board are placed by arrange.svelte.ts; they slide as others make room. */
+.board > [data-card] {
+  box-sizing: border-box;
+  transition:
+    left 0.18s ease,
+    top 0.18s ease;
+}
+
+.board > .dragging {
+  z-index: 10;
+  transition: none;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 
 /* Arrange mode: cards are dragged whole, so what's inside them sits still. */

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { card } from "$lib/arrange.svelte";
+  import { board, card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, parseError, type NetProcess, type Origin, type ProcessSource } from "$lib/api";
@@ -121,7 +121,7 @@
 </section>
 
 {#if s}
-  <div class="grid" style="--min: 420px">
+  <div use:board={{ group: "network", min: 420 }}>
     {#each nets as n (n.name)}
       <button class="card iface" use:card={{ group: "network", id: n.name }} aria-pressed={n.name === selected} onclick={() => (picked = n.name)}>
         <div class="spread">

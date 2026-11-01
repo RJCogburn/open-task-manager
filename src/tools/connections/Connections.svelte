@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { card } from "$lib/arrange.svelte";
+  import { board, card } from "$lib/arrange.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, parseError, type Connection } from "$lib/api";
   import { poll } from "$lib/live.svelte";
@@ -65,7 +65,7 @@
   {/snippet}
 </PageHeader>
 
-<div class="grid" style="--min: 220px; margin-bottom: 14px">
+<div use:board={{ group: "connections", min: 220 }} style="margin-bottom: 14px">
   <section class="card" use:card={{ group: "connections", id: "exposed" }}>
     <h3>Open to the network</h3>
     <div class="big" style:color={exposed.length ? "var(--warn)" : "var(--ok)"}>{exposed.length}</div>
