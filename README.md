@@ -119,11 +119,15 @@ To add a tool of your own, see [CONTRIBUTING.md](CONTRIBUTING.md).
    `src-tauri/tauri.conf.json`, then run `npm install` and `cargo build` in
    `src-tauri` so the lock files follow.
 2. Commit, tag and push, for example
-   `git tag v0.80.0 && git push origin main v0.80.0`.
+   `git tag v0.81.0 && git push origin main v0.81.0`.
 3. GitHub Actions builds the `.deb`, `.rpm` and AppImage for x86_64 and ARM on
    Ubuntu 22.04, signs the update files with the `TAURI_SIGNING_PRIVATE_KEY`
-   secret, and uploads everything to a draft release. Open that draft on the
-   Releases page, add the notes, and publish it.
+   secret, and uploads everything to a draft release.
+4. Publish the draft. On the Releases page, click the pencil icon on the draft
+   (it may be under "…"). Check that the tag field shows the new version, like
+   `v0.81.0`, not `untagged-…`; otherwise the updater's download links break.
+   Add the notes, then click **Publish release** at the bottom. Don't use
+   "Draft a new release", which makes a second, empty release.
 
 ## How much load it adds
 
