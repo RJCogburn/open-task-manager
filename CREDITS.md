@@ -25,6 +25,10 @@ not copied into it, so their licenses apply to them, not to this app.
 | [RPM](https://rpm.org/) | Installed packages on Fedora, openSUSE and other RPM-based systems | GPL-2.0-or-later |
 | [polkit](https://github.com/polkit-org/polkit) | Password prompt for acting on other users' processes (`pkexec`) | LGPL-2.0-or-later |
 | [xdg-utils](https://gitlab.freedesktop.org/xdg/xdg-utils) | Opening folders in the file manager (`xdg-open`) | MIT |
+| [systemd](https://systemd.io/) | Failed services and start-up times for the slowdown check (`systemctl`, `systemd-analyze`) | LGPL-2.1-or-later |
+| [power-profiles-daemon](https://gitlab.freedesktop.org/upower/power-profiles-daemon) | The current power profile for the slowdown check (`powerprofilesctl`), only if installed | GPL-3.0-or-later |
+| [nvme-cli](https://github.com/linux-nvme/nvme-cli) | Installing Western Digital firmware on NVMe drives (`nvme fw-download`, `fw-commit`), only if you do | GPL-2.0-or-later |
+| [fwupd](https://fwupd.org/) | Drive firmware versions and updates from the LVFS (`fwupdmgr`) | LGPL-2.1-or-later |
 | [Speedtest CLI by Ookla](https://www.speedtest.net/apps/cli) | Internet speed test against speedtest.net servers (`speedtest`), only if you install it | Proprietary (not open source) |
 | [NVIDIA System Management Interface](https://developer.nvidia.com/system-management-interface) | NVIDIA GPU readings (`nvidia-smi`), only if the NVIDIA driver is installed | Proprietary (not open source) |
 
@@ -32,16 +36,18 @@ not copied into it, so their licenses apply to them, not to this app.
 
 | Project | Used for | License |
 |---|---|---|
-| [Linux kernel](https://kernel.org/) | `/proc` counters, amdgpu readings, RAPL CPU power | GPL-2.0-only |
+| [Linux kernel](https://kernel.org/) | `/proc` counters, pressure stall information, amdgpu readings, RAPL CPU power | GPL-2.0-only |
 
 ## Online services
 
-Contacted only when you start the speed test, or check for updates (daily only if you agreed to it).
+Contacted only when you start the speed test, check for app or firmware updates (app updates daily only if you agreed to it).
 
 | Service | Used for | Terms |
 |---|---|---|
 | [LibreSpeed](https://librespeed.org/) | Internet speed test method and public test servers, run by volunteers and sponsors | LGPL-3.0-or-later (servers run by their sponsors) |
 | [GitHub Releases](https://github.com/RJCogburn/open-task-manager/releases) | Where new versions are published and checked for | Online service (not open source) |
+| [fwupd.org (LVFS)](https://fwupd.org/) | Firmware that drive makers publish for Linux, when you click Check fwupd.org for updates | Online service |
+| [Western Digital firmware server](https://www.sandisk.com/) | Firmware for Western Digital and SanDisk NVMe drives, when you check a drive | Online service (not open source) |
 
 ## Ideas borrowed from
 
@@ -54,6 +60,7 @@ No code from these projects is included, but they shaped how parts of this app w
 | [btop](https://github.com/aristocratos/btop) | Live graphs for every resource on one screen | Apache-2.0 |
 | [KDE System Monitor](https://apps.kde.org/plasma-systemmonitor/) | Process table, sensors and per-page layout | GPL-2.0-or-later |
 | [s-tui](https://github.com/amanusk/s-tui) | CPU frequency, temperature and power side by side | GPL-2.0-only |
+| [wd_ssd_firmware_update](https://github.com/not-a-feature/wd_ssd_firmware_update) | How to find and install Western Digital firmware on Linux | GPL-3.0 |
 
 ## Built with
 

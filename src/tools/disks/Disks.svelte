@@ -3,7 +3,8 @@
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import ScanResults from "$lib/ScanResults.svelte";
-  import { api, parseError, type Drive, type Mount } from "$lib/api";
+  import { api, parseError, type Drive, type FirmwareReport, type Mount, type WdCheck } from "$lib/api";
+  import { external } from "$lib/link";
   import { bytes, temp, count, pct, rate } from "$lib/format";
   import { live, poll } from "$lib/live.svelte";
   import { scan } from "$lib/scan.svelte";
@@ -25,6 +26,90 @@
   };
   poll(load, () => 15_000);
   poll(async () => (mounts = await api.mounts()), () => 15_000);
+
+  // Firmware is read once: asking fwupd takes a moment.
+  let firmware = $state<FirmwareReport | null>(null);
+  let firmwareBusy = $state("");
+  let firmwareNote = $state<{ text: string; bad?: boolean } | null>(null);
+  const loadFirmware = async () => {
+    try {
+      firmware = await api.firmware();
+    } catch (e) {
+      firmwareNote = { text: parseError(e).message, bad: true };
+    }
+  };
+  loadFirmware();
+
+  async function refreshFirmware() {
+    firmwareBusy = "refresh";
+    firmwareNote = null;
+    try {
+      await api.firmwareRefresh();
+      await loadFirmware();
+      firmwareNote = { text: "The firmware list is up to date." };
+    } catch (e) {
+      firmwareNote = { text: parseError(e).message, bad: true };
+    } finally {
+      firmwareBusy = "";
+    }
+  }
+
+  // Western Digital's own firmware, checked only when asked: it contacts WD's server.
+  let wd = $state<Record<string, WdCheck>>({});
+  const isWd = (d: Drive) => d.transport === "nvme" && firmware?.drives[d.name]?.maker?.name.startsWith("Western Digital");
+
+  async function checkWd(d: Drive) {
+    firmwareBusy = `wd:${d.name}`;
+    firmwareNote = null;
+    try {
+      wd[d.name] = await api.wdFirmwareCheck(d.name);
+    } catch (e) {
+      firmwareNote = { text: parseError(e).message, bad: true };
+    } finally {
+      firmwareBusy = "";
+    }
+  }
+
+  async function installWd(d: Drive, version: string) {
+    const ok = confirm(
+      `Install Western Digital firmware ${version} on the ${d.model}?\n\n` +
+        "This uses the same firmware files as WD's own Dashboard, but WD doesn't support installing them this way.\n\n" +
+        "• Back up anything important on this drive first.\n" +
+        "• Don't turn the computer off while it installs; it takes under a minute.\n" +
+        "• The new firmware takes over when you next restart.\n\n" +
+        "It will ask for your password.",
+    );
+    if (!ok) return;
+    firmwareBusy = `wd:${d.name}`;
+    firmwareNote = null;
+    try {
+      firmwareNote = { text: await api.wdFirmwareInstall(d.name, version) };
+      delete wd[d.name];
+    } catch (e) {
+      firmwareNote = { text: parseError(e).message, bad: true };
+    } finally {
+      firmwareBusy = "";
+    }
+  }
+
+  async function updateFirmware(d: Drive, id: string, version: string) {
+    const ok = confirm(
+      `Update ${d.model || d.name} to firmware ${version}?\n\n` +
+        "Back up anything important on it first. Don't turn the computer off or unplug the drive until it finishes; " +
+        "some drives finish installing at the next restart.\n\nfwupd will ask for your password.",
+    );
+    if (!ok) return;
+    firmwareBusy = d.name;
+    firmwareNote = null;
+    try {
+      firmwareNote = { text: await api.firmwareUpdate(id) };
+      await loadFirmware();
+    } catch (e) {
+      firmwareNote = { text: parseError(e).message, bad: true };
+    } finally {
+      firmwareBusy = "";
+    }
+  }
 
   const io = $derived(new Map(s?.disks.map((d) => [d.name, d]) ?? []));
   const onDrives = $derived(new Set(drives.flatMap((d) => d.filesystems.flatMap((f) => f.mountPoints))));
@@ -139,6 +224,50 @@
       </dl>
       {#if h.note}<p class="note" class:faint={h.status === "unknown" || h.status === "good"}>{h.note}</p>{/if}
 
+      {#if firmware?.drives[d.name]}
+        {@const fw = firmware.drives[d.name]}
+        <div class="firmware">
+          {#if fw.issue}
+            <div class="notice bad">
+              <b>Firmware {fw.version} has a known bug.</b>
+              {fw.issue.text}
+              <a href={fw.issue.source} use:external>Source</a>
+            </div>
+          {/if}
+          {#if fw.update && fw.fwupdId}
+            <div class="spread">
+              <span>Firmware <b>{fw.update}</b> is available from fwupd (now {fw.version}).</span>
+              <button class="btn primary" disabled={!!firmwareBusy} onclick={() => updateFirmware(d, fw.fwupdId!, fw.update!)}>
+                {#if firmwareBusy === d.name}<span class="spinner"></span>Updating…{:else}Update firmware{/if}
+              </button>
+            </div>
+          {:else if fw.maker}
+            <span class="faint">
+              {fw.maker.name} publishes firmware through {fw.maker.how.replace(/\.$/, "")}.
+              <a href={fw.maker.url} use:external>Firmware updates</a>
+            </span>
+          {/if}
+          {#if isWd(d)}
+            {@const check = wd[d.name]}
+            <div class="spread wd">
+              {#if check}
+                <span>{check.note}</span>
+                {#if check.install}
+                  <button class="btn primary" disabled={!!firmwareBusy} onclick={() => installWd(d, check.install!)}>
+                    {#if firmwareBusy === `wd:${d.name}`}<span class="spinner"></span>Installing…{:else}Install {check.install}{/if}
+                  </button>
+                {/if}
+              {:else}
+                <span class="faint">This app can also install Western Digital's firmware directly.</span>
+                <button class="btn" disabled={!!firmwareBusy} onclick={() => checkWd(d)} title="Contacts Western Digital's server">
+                  {#if firmwareBusy === `wd:${d.name}`}<span class="spinner"></span>{/if}Check Western Digital
+                </button>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       {#if d.filesystems.length}
         <ul class="fs">
           {#each d.filesystems as f (f.device)}
@@ -230,6 +359,34 @@
   {/each}
 </div>
 
+{#if firmware}
+  <h2 class="section">Firmware updates</h2>
+  <section class="card">
+    {#if !firmware.fwupd}
+      <p class="muted">
+        Firmware updates come from fwupd, which isn't installed. Install the <code>fwupd</code> package to get updates
+        that drive makers publish for Linux.
+      </p>
+    {:else}
+      <div class="spread">
+        <p class="muted" style="margin: 0">
+          fwupd installs firmware that makers publish and sign on fwupd.org. Most consumer SSD makers publish only
+          through their own tools instead; each drive above says where.
+          {firmware.metadataAgeDays == null
+            ? "fwupd hasn't fetched its list of firmware yet."
+            : firmware.metadataAgeDays === 0
+              ? "Its list of firmware was fetched today."
+              : `Its list of firmware is ${firmware.metadataAgeDays} day${firmware.metadataAgeDays === 1 ? "" : "s"} old.`}
+        </p>
+        <button class="btn" disabled={!!firmwareBusy} onclick={refreshFirmware} title="Contacts fwupd.org">
+          {#if firmwareBusy === "refresh"}<span class="spinner"></span>{/if}Check fwupd.org for updates
+        </button>
+      </div>
+    {/if}
+    {#if firmwareNote}<div class="notice {firmwareNote.bad ? 'bad' : 'info'}" style="margin-top: 12px">{firmwareNote.text}</div>{/if}
+  </section>
+{/if}
+
 {#if otherMounts.length}
   <h2 class="section">Other filesystems</h2>
   <div class="table-wrap">
@@ -267,6 +424,19 @@
 {/if}
 
 <style>
+  .firmware {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+
+  .firmware .notice {
+    margin-bottom: 8px;
+  }
+
+  .firmware .wd {
+    margin-top: 8px;
+  }
+
   .top {
     align-items: flex-start;
   }

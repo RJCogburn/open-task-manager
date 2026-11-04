@@ -33,6 +33,8 @@
   );
   // Settings is not in the page list: it opens from the gear and needs the list itself.
   const page = $derived(current === "settings" ? null : (all.find((p) => p.id === current) ?? all[0]));
+  // Pages link to other pages through this.
+  setContext("otm.go", (id: string) => go(id));
   // The page header finds its tool's sources through this.
   setContext("otm.tool", () => tools.find((t) => t.id === page?.id));
 

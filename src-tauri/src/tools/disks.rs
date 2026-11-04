@@ -88,6 +88,20 @@ pub async fn drives(state: State<'_, AppState>) -> Result<Vec<Drive>, String> {
     tauri::async_runtime::spawn_blocking(move || list(&cache)).await.map_err(|e| e.to_string())?
 }
 
+/// Each drive's name, health status and note, for the slowdown check.
+#[cfg_attr(not(feature = "slowdown"), allow(dead_code))]
+pub(crate) fn health_summary(cache: &Arc<HealthCache>) -> Vec<(String, &'static str, String)> {
+    list(cache)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|d| !d.removable)
+        .map(|d| {
+            let name = if d.model.is_empty() { d.name } else { format!("{} ({})", d.model, d.name) };
+            (name, d.health.status, d.health.note)
+        })
+        .collect()
+}
+
 fn list(cache: &Arc<HealthCache>) -> Result<Vec<Drive>, String> {
     let out = programs::run(
         "lsblk",

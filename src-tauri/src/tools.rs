@@ -15,6 +15,8 @@ pub mod connections;
 pub mod disk_space;
 #[cfg(feature = "disks")]
 pub mod disks;
+#[cfg(feature = "disks")]
+pub mod firmware;
 #[cfg(feature = "installed-apps")]
 pub mod installed_apps;
 #[cfg(feature = "network")]
@@ -23,6 +25,8 @@ pub mod network;
 pub mod processes;
 #[cfg(feature = "sensors")]
 pub mod sensors;
+#[cfg(feature = "slowdown")]
+pub mod slowdown;
 
 /// Tools this build left out, by their id in `src/tools/`, so the window can
 /// leave out their pages too.
@@ -37,6 +41,7 @@ pub fn missing_tools() -> Vec<&'static str> {
         ("network", cfg!(feature = "network")),
         ("processes", cfg!(feature = "processes")),
         ("sensors", cfg!(feature = "sensors")),
+        ("slowdown", cfg!(feature = "slowdown")),
     ]
     .into_iter()
     .filter(|&(_, built)| !built)

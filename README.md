@@ -43,8 +43,8 @@ system already has in one window, with live graphs.
 </details>
 
 No account, no telemetry and no paid tier. The app contacts the internet only
-when you run the internet speed test, and, if you agree to it, to ask GitHub
-once a day whether a newer version is out.
+when you run the internet speed test or check for drive firmware, and, if you
+agree to it, to ask GitHub once a day whether a newer version is out.
 
 ## Install
 

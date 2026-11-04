@@ -56,6 +56,7 @@ fn install_hint(program: &str) -> Option<String> {
         "fio" => package("fio", "fio", "fio", "fio"),
         "glmark2" => package("glmark2", "glmark2", "glmark2", "glmark2"),
         "curl" => package("curl", "curl", "curl", "curl"),
+        "nvme" => package("nvme-cli", "nvme-cli", "nvme-cli", "nvme-cli"),
         "lspci" => package("pciutils", "pciutils", "pciutils", "pciutils"),
         "pkexec" => package("polkit", "pkexec", "polkit", "polkit"),
         "smartctl" => package("smartmontools", "smartmontools", "smartmontools", "smartmontools"),

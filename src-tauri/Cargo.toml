@@ -10,7 +10,7 @@ license = "GPL-3.0-or-later"
 # `cargo build --release --no-default-features --features processes,disks`.
 # CPU, Memory, GPU and Overview need no feature: the live sampler feeds them.
 [features]
-default = ["benchmarks", "connections", "disk-space", "disks", "installed-apps", "network", "processes", "sensors"]
+default = ["benchmarks", "connections", "disk-space", "disks", "installed-apps", "network", "processes", "sensors", "slowdown"]
 benchmarks = []
 connections = []
 disk-space = []
@@ -19,6 +19,7 @@ installed-apps = []
 network = []
 processes = []
 sensors = []
+slowdown = []
 
 [lib]
 name = "open_task_manager_lib"

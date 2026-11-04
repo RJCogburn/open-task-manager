@@ -256,7 +256,7 @@ fn total_threads() -> usize {
 
 /// The CPU package temperature input from the kernel's hwmon interface, the
 /// same source lm-sensors reads.
-fn find_cpu_temp_input() -> Option<PathBuf> {
+pub(crate) fn find_cpu_temp_input() -> Option<PathBuf> {
     for entry in fs::read_dir("/sys/class/hwmon").ok()?.flatten() {
         let name = fs::read_to_string(entry.path().join("name")).unwrap_or_default();
         if matches!(name.trim(), "k10temp" | "zenpower" | "coretemp" | "cpu_thermal") {
@@ -269,7 +269,7 @@ fn find_cpu_temp_input() -> Option<PathBuf> {
     None
 }
 
-fn read_millidegrees(path: &PathBuf) -> Option<f32> {
+pub(crate) fn read_millidegrees(path: &PathBuf) -> Option<f32> {
     fs::read_to_string(path).ok()?.trim().parse::<f32>().ok().map(|m| m / 1000.0)
 }
 

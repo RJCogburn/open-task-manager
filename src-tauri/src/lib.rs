@@ -180,6 +180,16 @@ pub fn run() {
             tools::disks::drives,
             #[cfg(feature = "disks")]
             tools::disks::drive_health_admin,
+            #[cfg(feature = "disks")]
+            tools::firmware::firmware,
+            #[cfg(feature = "disks")]
+            tools::firmware::firmware_refresh,
+            #[cfg(feature = "disks")]
+            tools::firmware::firmware_update,
+            #[cfg(feature = "disks")]
+            tools::firmware::wd_firmware_check,
+            #[cfg(feature = "disks")]
+            tools::firmware::wd_firmware_install,
             #[cfg(feature = "installed-apps")]
             tools::installed_apps::installed_apps,
             #[cfg(feature = "network")]
@@ -196,6 +206,10 @@ pub fn run() {
             tools::processes::admin_action,
             #[cfg(feature = "sensors")]
             tools::sensors::sensors,
+            #[cfg(feature = "slowdown")]
+            tools::slowdown::slowdown_check,
+            #[cfg(feature = "slowdown")]
+            tools::slowdown::slowdown_fix,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Open Task Manager");

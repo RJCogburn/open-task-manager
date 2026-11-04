@@ -176,6 +176,58 @@ export type NetScore = {
   url: string | null;
 };
 
+export type KnownIssue = { text: string; source: string };
+export type DriveMaker = { name: string; how: string; url: string };
+export type DriveFirmware = {
+  version: string;
+  /** fwupd's id for the drive, if it can update it. */
+  fwupdId: string | null;
+  /** A newer version fwupd has for it. */
+  update: string | null;
+  issue: KnownIssue | null;
+  maker: DriveMaker | null;
+};
+export type FirmwareReport = {
+  fwupd: boolean;
+  /** Days since fwupd last fetched its list of firmware. */
+  metadataAgeDays: number | null;
+  /** By block device name. */
+  drives: Record<string, DriveFirmware>;
+};
+
+export type WdCheck = {
+  current: string;
+  /** Western Digital's newest version for this model. */
+  latest: string | null;
+  /** A version that can be installed now. */
+  install: string | null;
+  note: string;
+};
+
+export type SlowdownCheck = {
+  id: string;
+  title: string;
+  status: "bad" | "warn" | "ok" | "skipped";
+  detail: string;
+  /** The page with more, by tool id. */
+  page: string | null;
+  /** Paragraphs on what was found, why it matters and what to do. */
+  more: string[];
+  actions: SlowdownAction[];
+};
+/** A fix offered with a finding; `fix` and `target` go back to slowdownFix unchanged. */
+export type SlowdownAction = {
+  fix: string;
+  target: string | null;
+  label: string;
+  explain: string;
+  command: string;
+  admin: boolean;
+};
+/** Share of the last minute some programs waited, in percent. */
+export type Pressure = { cpu: number; memory: number; io: number };
+export type SlowdownReport = { checks: SlowdownCheck[]; pressure: Pressure | null };
+
 export type App = {
   name: string;
   version: string;
@@ -273,6 +325,13 @@ export const api = {
   setInterval: (ms: number) => invoke<void>("set_interval", { ms }),
   setDisabledTools: (tools: string[]) => invoke<void>("set_disabled_tools", { tools }),
   missingTools: () => invoke<string[]>("missing_tools"),
+  slowdownCheck: () => invoke<SlowdownReport>("slowdown_check"),
+  firmware: () => invoke<FirmwareReport>("firmware"),
+  firmwareRefresh: () => invoke<void>("firmware_refresh"),
+  firmwareUpdate: (deviceId: string) => invoke<string>("firmware_update", { deviceId }),
+  wdFirmwareCheck: (device: string) => invoke<WdCheck>("wd_firmware_check", { device }),
+  wdFirmwareInstall: (device: string, version: string) => invoke<string>("wd_firmware_install", { device, version }),
+  slowdownFix: (fix: string, target: string | null) => invoke<string>("slowdown_fix", { fix, target }),
   processes: () => invoke<Proc[]>("processes"),
   endProcess: (pid: number, force: boolean) => invoke<void>("end_process", { pid, force }),
   setPriority: (pid: number, nice: number) => invoke<void>("set_priority", { pid, nice }),
