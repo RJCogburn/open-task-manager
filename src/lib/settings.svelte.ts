@@ -3,10 +3,14 @@
 // there instead; see the Settings page.
 
 export type ChartStyle = "smooth" | "straight" | "step" | "bars";
+/** What a single chart shows: a graph style, or one of the latest-value views. */
+export type ChartType = ChartStyle | "number" | "ring" | "meter";
 
 export type Settings = {
   intervalMs: number;
-  theme: "system" | "dark" | "light" | "neon";
+  theme: "system" | "dark" | "light" | "neon" | "hud";
+  /** A colour for buttons, highlights and the selected page, or "" for the theme's own. */
+  accent: string;
   /** A page id, or "last" for wherever the window was when it closed. */
   startPage: string;
   lastPage: string;
@@ -25,6 +29,8 @@ export type Settings = {
   rememberBenchmarks: boolean;
   /** Which service the internet speed test uses; "auto" prefers Ookla when installed. */
   speedTest: "auto" | "ookla" | "librespeed";
+  /** Charts given their own type, by the chart's label. Others follow `chart.style`. */
+  chartTypes: Record<string, ChartType>;
   /** The order of cards in each group, as the user arranged them. */
   cardOrder: Record<string, string[]>;
   /** Each board's columns of card ids, as the user arranged them. */
@@ -47,6 +53,7 @@ const KEY = "otm.settings";
 export const defaults: Settings = {
   intervalMs: 1000,
   theme: "system",
+  accent: "",
   startPage: "overview",
   lastPage: "overview",
   chart: { style: "smooth", fill: true, grid: true, thickness: 1.75, history: 120 },
@@ -56,6 +63,7 @@ export const defaults: Settings = {
   showIdleInterfaces: false,
   rememberBenchmarks: true,
   speedTest: "auto",
+  chartTypes: {},
   cardOrder: {},
   cardLayout: {},
   disabledTools: [],

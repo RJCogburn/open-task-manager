@@ -60,6 +60,106 @@
   --temp: #e85a20;
 }
 
+/* HUD: a heads-up display. Dark teal with a dot pattern, flat see-through
+   panels with square corners marked by brackets, and small uppercase
+   headings. Its accent comes from Settings like any theme's. */
+:root[data-theme="hud"] {
+  --bg: #030c0f;
+  --bg-glow: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.07) 1px, transparent 0) 0 0 / 22px 22px,
+    linear-gradient(180deg, #030c0f 0%, #0b2229 100%);
+  --sidebar: rgba(2, 10, 13, 0.7);
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-2: rgba(255, 255, 255, 0.08);
+  --panel-hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.3);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.6);
+  --faint: rgba(255, 255, 255, 0.38);
+  --grid: rgba(255, 255, 255, 0.06);
+  --shadow: none;
+
+  --cpu: #3ce6b4;
+  --mem: #8f9dff;
+  --disk: #ffd166;
+  --net: #4fc3ff;
+  --gpu: #ff6b9d;
+  --temp: #ff8a4c;
+  --ok: #3ce6b4;
+  --warn: #ffd166;
+  --bad: #ff5c6c;
+  --accent: #3ce6b4;
+
+  --radius: 0;
+  --radius-sm: 0;
+  font-family: "Chakra Petch", "Inter", "Noto Sans", system-ui, sans-serif;
+}
+
+[data-theme="hud"] .card {
+  position: relative;
+  border-color: transparent;
+}
+
+/* A bracket at each corner, drawn as eight thin bars in one layer. */
+[data-theme="hud"] .card::before {
+  --c: var(--border-strong);
+  --l: 10px;
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / var(--l) 2px,
+    linear-gradient(var(--c), var(--c)) top left / 2px var(--l),
+    linear-gradient(var(--c), var(--c)) top right / var(--l) 2px,
+    linear-gradient(var(--c), var(--c)) top right / 2px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) 2px,
+    linear-gradient(var(--c), var(--c)) bottom left / 2px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) 2px,
+    linear-gradient(var(--c), var(--c)) bottom right / 2px var(--l);
+  background-repeat: no-repeat;
+}
+
+[data-theme="hud"] .card:hover::before {
+  --c: var(--accent);
+}
+
+[data-theme="hud"] .card h3 {
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+[data-theme="hud"] .btn,
+[data-theme="hud"] .input,
+[data-theme="hud"] .seg {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+}
+
+[data-theme="hud"] .btn {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+[data-theme="hud"] .btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+[data-theme="hud"] .btn.primary {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+[data-theme="hud"] .seg button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+}
+
 /* Neon: a control-room look. Deep navy, flat panels edged in glowing cyan,
    square corners, and bracketed uppercase titles. Graphs glow too: Chart
    reads --chart-glow. */

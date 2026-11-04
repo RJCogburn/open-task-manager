@@ -90,6 +90,8 @@
     }
   }
 
+  const accents = ["#00e5ff", "#3ce6b4", "#7cff4f", "#ffd23f", "#ff8a3d", "#ff4f7b", "#d36bff", "#6b8bff", "#e8eef2"];
+
   const styles: { id: ChartStyle; label: string }[] = [
     { id: "smooth", label: "Smooth" },
     { id: "straight", label: "Straight" },
@@ -130,9 +132,19 @@
     <div class="field">
       <span>Theme</span>
       <div class="seg" role="group" aria-label="Theme">
-        {#each [["system", "System"], ["dark", "Dark"], ["light", "Light"], ["neon", "Neon"]] as const as [id, label] (id)}
+        {#each [["system", "System"], ["dark", "Dark"], ["light", "Light"], ["neon", "Neon"], ["hud", "HUD"]] as const as [id, label] (id)}
           <button aria-pressed={settings.theme === id} onclick={() => live.setTheme(id)}>{label}</button>
         {/each}
+      </div>
+    </div>
+    <div class="field">
+      <span>Accent colour</span>
+      <div class="swatches" role="group" aria-label="Accent colour">
+        <button class="swatch auto" aria-pressed={!settings.accent} title="The theme's own" onclick={() => live.setAccent("")}>A</button>
+        {#each accents as c (c)}
+          <button class="swatch" style:background={c} aria-pressed={settings.accent === c} title={c} aria-label={c} onclick={() => live.setAccent(c)}></button>
+        {/each}
+        <input type="color" value={settings.accent || "#00e5ff"} title="Any colour" aria-label="Any colour" onchange={(e) => live.setAccent(e.currentTarget.value)} />
       </div>
     </div>
     <div class="field">
@@ -546,5 +558,43 @@
 
   .logrow select {
     height: 30px;
+  }
+
+  .swatches {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .swatch {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    outline: 1px solid var(--border-strong);
+  }
+
+  .swatch[aria-pressed="true"] {
+    border-color: var(--bg);
+    outline: 2px solid var(--text);
+  }
+
+  .swatch.auto {
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 650;
+  }
+
+  .swatches input[type="color"] {
+    width: 26px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
   }
 </style>

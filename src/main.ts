@@ -1,6 +1,9 @@
 import { mount } from "svelte";
 // Only downloaded by the browser when a theme uses it.
 import "@fontsource-variable/space-grotesk";
+import "@fontsource/chakra-petch/latin-400.css";
+import "@fontsource/chakra-petch/latin-500.css";
+import "@fontsource/chakra-petch/latin-600.css";
 import "./app.css";
 import App from "./App.svelte";
 import WidgetPanel from "./lib/WidgetPanel.svelte";

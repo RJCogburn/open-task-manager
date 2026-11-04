@@ -18,6 +18,13 @@ export type Credit = {
 };
 
 export const credits = {
+  chakraPetch: {
+    name: "Chakra Petch",
+    role: "The typeface of the HUD theme",
+    license: "OFL-1.1",
+    url: "https://github.com/cadsondemak/Chakra-Petch",
+    group: "built",
+  },
   spaceGrotesk: {
     name: "Space Grotesk",
     role: "The typeface of the Neon theme",

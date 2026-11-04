@@ -99,6 +99,14 @@ class Live {
     const prefersLight = matchMedia("(prefers-color-scheme: light)").matches;
     const theme = this.settings.theme === "system" ? (prefersLight ? "light" : "dark") : this.settings.theme;
     document.documentElement.dataset.theme = theme;
+    const root = document.documentElement.style;
+    if (this.settings.accent) root.setProperty("--accent", this.settings.accent);
+    else root.removeProperty("--accent");
+  }
+
+  setAccent(color: string) {
+    this.settings.accent = color;
+    this.applyTheme();
   }
 }
 

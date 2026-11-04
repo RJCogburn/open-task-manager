@@ -65,6 +65,7 @@ Libraries compiled into Open Task Manager. All are compatible with GPL-3.0-or-la
 | [Tauri](https://tauri.app/) | The desktop app shell | Apache-2.0 OR MIT |
 | [Svelte](https://svelte.dev/) | The interface | MIT |
 | [Space Grotesk](https://github.com/floriankarsten/space-grotesk) | The typeface of the Neon theme | OFL-1.1 |
+| [Chakra Petch](https://github.com/cadsondemak/Chakra-Petch) | The typeface of the HUD theme | OFL-1.1 |
 | [Vite](https://vite.dev/) | Building the interface | MIT |
 | [Rayon](https://github.com/rayon-rs/rayon) | Scanning folders on all CPU cores | Apache-2.0 OR MIT |
 | [Serde](https://serde.rs/) | Passing data between Rust and the interface | Apache-2.0 OR MIT |
