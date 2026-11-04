@@ -1,5 +1,5 @@
 # Builds .deb, .rpm and AppImage packages for x86_64 and ARM, and uploads them
-# to a draft GitHub release. Push a tag like v0.82.1 to start it; publish the
+# to a draft GitHub release. Push a tag like v0.83.0 to start it; publish the
 # draft from the Releases page once you've checked it.
 #
 # Packages are built on Ubuntu 22.04, the oldest system supported (WebKitGTK
