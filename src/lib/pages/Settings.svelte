@@ -7,7 +7,8 @@
   import { bytes, pct } from "$lib/format";
   import { live } from "$lib/live.svelte";
   import { defaults, resetSettings, setToolOn, settings, toolBuilt, toolOn, type ChartStyle } from "$lib/settings.svelte";
-  import { tools } from "../../tools/registry";
+  import PluginApproval from "$lib/PluginApproval.svelte";
+  import { allTools, approvePlugin, loadPlugins, plugins } from "$lib/plugins.svelte";
   import { updates } from "$lib/updates.svelte";
 
   let widgets = $state<WidgetStatus | null>(null);
@@ -106,6 +107,15 @@
     { key: "gpu", label: "Graphics", hint: "usage, memory, temperature, power" },
     { key: "temperatures", label: "Temperatures", hint: "CPU, graphics and drives" },
   ] as const;
+
+  async function openPluginsFolder() {
+    error = "";
+    try {
+      await api.pluginsOpenFolder();
+    } catch (e) {
+      error = parseError(e).message;
+    }
+  }
 
   function clearBenchmarks() {
     benchmarks.clear();
@@ -344,13 +354,49 @@
       Switch off the pages you don't use. They leave the sidebar and do no work. Overview always stays.
     </p>
     <div class="kinds">
-      {#each tools.filter((t) => toolBuilt(t.id)) as t (t.id)}
+      {#each allTools().filter((t) => toolBuilt(t.id)) as t (t.id)}
         <label class="kind">
           <input type="checkbox" checked={toolOn(t.id)} disabled={t.id === "overview"} onchange={(e) => setToolOn(t.id, e.currentTarget.checked)} />
           <span><b>{t.label}</b></span>
         </label>
       {/each}
     </div>
+  </section>
+
+  <section class="card wide">
+    <div class="spread">
+      <h3>Plugins</h3>
+      <span class="row">
+        <button class="btn" onclick={() => loadPlugins()}>Look again</button>
+        <button class="btn" onclick={openPluginsFolder}>Open plugins folder</button>
+      </span>
+    </div>
+    <p class="faint hint">
+      Pages other people write. Put each in its own folder in the plugins folder; see the plugin guide on GitHub.
+      A plugin runs inside Open Task Manager with the app's access, so none loads until you approve it.
+    </p>
+    {#if plugins.loaded && !plugins.list.length}
+      <p class="muted">No plugins are installed.</p>
+    {/if}
+    {#each plugins.list as p (p.id)}
+      <div class="plugin">
+        <div class="spread">
+          <div>
+            <b>{p.name}</b>
+            <span class="faint">{p.version}{p.author ? ` · ${p.author}` : ""}</span>
+            {#if p.description}<div class="muted">{p.description}</div>{/if}
+          </div>
+          {#if p.approved}
+            <button class="btn" onclick={() => approvePlugin(p, false)}>Take back approval</button>
+          {/if}
+        </div>
+        {#if p.problem}
+          <div class="notice bad">Can't load: {p.problem}</div>
+        {:else if !p.approved}
+          <PluginApproval plugin={p} />
+        {/if}
+      </div>
+    {/each}
   </section>
 
   <section class="card wide">
@@ -558,6 +604,15 @@
 
   .logrow select {
     height: 30px;
+  }
+
+  .plugin {
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .plugin :global(.approval) {
+    margin-top: 10px;
   }
 
   .swatches {

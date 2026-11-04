@@ -1,0 +1,15 @@
+{
+  "id": "example",
+  "name": "Example",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "description": "A small plugin to copy: the kernel, uptime, and two live charts",
+  "author": "Open Task Manager",
+  "icon": "M4 5h16v11H4zM8 20h8M12 16v4M7 12l3-3 2 2 4-4",
+  "section": "tools",
+  "order": 500,
+  "commands": {
+    "kernel": ["uname", "-srm"],
+    "uptime": ["uptime", "-p"]
+  }
+}

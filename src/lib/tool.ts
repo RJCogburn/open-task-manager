@@ -22,7 +22,10 @@ export type Tool = {
    * linked in the page header and the About page, and any program among them
    * is checked for and offered for install. */
   sources?: CreditId[];
-  page: Component;
+  /** The page. A plugin's page takes its plugin as a prop. */
+  page: Component<any>;
+  /** Props for the page; a plugin's page is told which plugin it shows. */
+  props?: Record<string, unknown>;
 };
 
 export const defineTool = (tool: Tool) => tool;

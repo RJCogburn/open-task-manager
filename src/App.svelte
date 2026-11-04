@@ -8,9 +8,18 @@
   import About from "./lib/pages/About.svelte";
   import Settings from "./lib/pages/Settings.svelte";
   import { settings, toolOn } from "./lib/settings.svelte";
-  import { sections as toolSections, tools } from "./tools/registry";
+  import { allTools, loadPlugins } from "./lib/plugins.svelte";
+  import { sections as toolSections } from "./tools/registry";
 
-  type Page = { id: string; label: string; icon: string; component: Component; color?: string; value?: () => string };
+  type Page = {
+    id: string;
+    label: string;
+    icon: string;
+    component: Component<any>;
+    color?: string;
+    value?: () => string;
+    props?: Record<string, unknown>;
+  };
 
   const about: Page = { id: "about", label: "About & Credits", icon: "about", component: About };
   // Tools draw their own icon path; the app's own pages name one of Icon's.
@@ -19,9 +28,9 @@
     ...toolSections
       .map((sec) => ({
         title: sec.title,
-        pages: tools
+        pages: allTools()
           .filter((t) => t.section === sec.id && toolOn(t.id))
-          .map((t) => ({ id: t.id, label: t.label, icon: "", path: t.icon, component: t.page, color: t.color, value: t.value })),
+          .map((t) => ({ id: t.id, label: t.label, icon: "", path: t.icon, component: t.page, color: t.color, value: t.value, props: t.props })),
       }))
       .filter((sec) => sec.pages.length),
     { title: "", pages: [about] },
@@ -36,7 +45,7 @@
   // Pages link to other pages through this.
   setContext("otm.go", (id: string) => go(id));
   // The page header finds its tool's sources through this.
-  setContext("otm.tool", () => tools.find((t) => t.id === page?.id));
+  setContext("otm.tool", () => allTools().find((t) => t.id === page?.id));
 
   function go(id: string) {
     current = id;
@@ -48,6 +57,7 @@
 
   let main = $state<HTMLElement>();
   live.start();
+  loadPlugins();
   updates.start();
 
   // Paused graphs: arrows step through time, Space and Esc resume. Space
@@ -133,7 +143,7 @@
     {/if}
     {#key current}
       {#if page}
-        <page.component />
+        <page.component {...page.props} />
       {:else}
         <Settings pages={all} />
       {/if}

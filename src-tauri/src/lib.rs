@@ -3,6 +3,7 @@
 
 mod gpu;
 mod logging;
+mod plugins;
 mod programs;
 mod sampler;
 mod startup;
@@ -139,6 +140,12 @@ pub fn run() {
             sampler::mounts,
             sampler::set_disabled_tools,
             tools::missing_tools,
+            // Plugins
+            plugins::plugins_list,
+            plugins::plugin_source,
+            plugins::plugin_approve,
+            plugins::plugin_run,
+            plugins::plugins_open_folder,
             sampler::set_interval,
             logging::logging_get,
             logging::logging_set,

@@ -66,7 +66,8 @@ class Live {
     return (this.frozen ?? this.series).get("time")?.length ?? 1;
   }
 
-  private push(key: string, value: number | null | undefined) {
+  /** Adds a value to a graph's history. Plugins keep their own series with it. */
+  push(key: string, value: number | null | undefined) {
     let s = this.series.get(key);
     if (!s) {
       s = [];

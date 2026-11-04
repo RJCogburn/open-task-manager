@@ -271,6 +271,23 @@ export type Audit = {
 };
 /** The last audit, and earlier scores as [time, admin, score], oldest first. */
 export type SavedAudits = { last: Audit | null; scores: [number, boolean, number][] };
+export type PluginInfo = {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  /** An SVG path on a 24×24 grid. */
+  icon: string;
+  section: "monitor" | "tools";
+  order: number;
+  /** The programs it may run, by its own name for each. */
+  commands: Record<string, string[]>;
+  /** Why it can't be loaded, if it can't. */
+  problem: string | null;
+  approved: boolean;
+};
+export type RunOutput = { status: number; stdout: string; stderr: string };
 
 export type App = {
   name: string;
@@ -411,6 +428,11 @@ export const api = {
   securityUndo: (index: number) => invoke<string>("security_undo", { index }),
   securityChanges: () => invoke<AuditChange[]>("security_changes"),
   slowdownFix: (fix: string, target: string | null) => invoke<string>("slowdown_fix", { fix, target }),
+  pluginsList: () => invoke<PluginInfo[]>("plugins_list"),
+  pluginSource: (id: string) => invoke<string>("plugin_source", { id }),
+  pluginApprove: (id: string, approve: boolean) => invoke<void>("plugin_approve", { id, approve }),
+  pluginRun: (id: string, command: string) => invoke<RunOutput>("plugin_run", { id, command }),
+  pluginsOpenFolder: () => invoke<void>("plugins_open_folder"),
   processes: () => invoke<Proc[]>("processes"),
   endProcess: (pid: number, force: boolean) => invoke<void>("end_process", { pid, force }),
   setPriority: (pid: number, nice: number) => invoke<void>("set_priority", { pid, nice }),

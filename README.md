@@ -21,6 +21,7 @@ system already has in one window, with live graphs.
 - **Security audit**: runs [Lynis](https://github.com/CISOfy/lynis) and explains each finding; safe fixes come with a button and can be undone, and findings best left alone on a desktop say why
 - **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
 - **Desktop widgets**: a see-through panel with the readings you pick, and a [readings feed](docs/readings-feed.md) so Plasma widgets, GNOME extensions or conky can show them too
+- **Plugins**: pages other people write, loaded from a folder once you approve them; see [writing a plugin](docs/plugins.md)
 - **Updates**: tells you when a new version is out; installs it on request or automatically (signed updates for the AppImage, .deb and .rpm)
 - **Settings**: graph style, units, start page, start at login, logging chosen hardware to CSV files, and switching off pages you don't use (their readings stop too, unless a widget or the log still uses them)
 
