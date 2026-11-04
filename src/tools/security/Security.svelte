@@ -36,13 +36,16 @@
   let undoNote = $state<{ text: string; bad?: boolean } | null>(null);
   const loadChanges = async () => (changes = await api.securityChanges());
   loadChanges();
+  // A change counts as done only if made after the audit shown: a later
+  // audit that still finds the problem means the change didn't hold.
+  const since = $derived(changes.filter((c) => !audit || c.time > audit.time));
   // Kernel settings count one by one, whether set alone or with others.
-  const setNow = $derived(new Set(changes.filter((c) => c.fix === "sysctl").flatMap((c) => c.target?.split(",") ?? [])));
+  const setNow = $derived(new Set(since.filter((c) => c.fix === "sysctl").flatMap((c) => c.target?.split(",") ?? [])));
   const isDone = (a: AuditAction) =>
     !a.readOnly &&
     (a.fix === "sysctl"
       ? (a.target?.split(",") ?? []).every((t) => setNow.has(t))
-      : changes.some((c) => c.fix === a.fix && c.target === a.target));
+      : since.some((c) => c.fix === a.fix && c.target === a.target));
 
   async function act(k: string, a: AuditAction) {
     if (!a.readOnly) {

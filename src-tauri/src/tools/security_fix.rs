@@ -60,6 +60,10 @@ pub struct Extra {
 }
 
 const SYSCTL_FILE: &str = "/etc/sysctl.d/90-open-task-manager.conf";
+/// ufw, the firewall, applies the kernel settings in this file each time it
+/// starts, after the system's own; a setting made only in SYSCTL_FILE would
+/// be undone at every start-up.
+const UFW_SYSCTL: &str = "/etc/ufw/sysctl.conf";
 const MODPROBE_FILE: &str = "/etc/modprobe.d/open-task-manager-blacklist.conf";
 const COREDUMP_FILE: &str = "/etc/systemd/coredump.conf.d/50-open-task-manager.conf";
 const LIMITS_FILE: &str = "/etc/security/limits.d/50-open-task-manager.conf";
@@ -444,17 +448,27 @@ fn sysctls(report: &str, x: &mut Extra) {
             continue;
         }
         let Some((_, value, cost)) = SYSCTLS.iter().find(|(k, v, _)| *k == key && *v == want) else { continue };
-        let explain = if cost.is_empty() {
+        let mut explain = if cost.is_empty() {
             format!("Sets {key} to {value}, now and at every start-up.")
         } else {
             format!("Sets {key} to {value}, now and at every start-up. {cost}")
         };
+        let ufw = ufw_value(&ufw_text(), &key).filter(|v| v != value);
+        if let Some(theirs) = &ufw {
+            explain.push_str(&format!(
+                " ufw, the firewall, sets it to {theirs} each time it starts, so its setting in {UFW_SYSCTL} changes too."
+            ));
+        }
         x.actions.push(action(
             "sysctl",
             Some(format!("{key}={value}")),
             format!("Set {key} to {value}"),
             explain,
-            format!("sysctl -w {key}={value}, saved in {SYSCTL_FILE}"),
+            if ufw.is_some() {
+                format!("sysctl -w {key}={value}, saved in {SYSCTL_FILE} and {UFW_SYSCTL}")
+            } else {
+                format!("sysctl -w {key}={value}, saved in {SYSCTL_FILE}")
+            },
         ));
         if cost.is_empty() {
             safe.push(format!("{key}={value}"));
@@ -564,7 +578,21 @@ fn apply(fix: &str, target: Option<&str>) -> Result<Applied, String> {
     match fix {
         "sysctl" | "sysctl-restore" => {
             let mut pairs = Vec::new();
-            for pair in target.split(',') {
+            // Restoring may also put back ufw's own values, as "ufw:key=value".
+            let mut ufw_back = Vec::new();
+            for pair in target.split(',').filter(|p| !p.is_empty()) {
+                if let Some(theirs) = pair.strip_prefix("ufw:") {
+                    let (key, value) = theirs.split_once('=').ok_or("Not a setting")?;
+                    if fix != "sysctl-restore"
+                        || !SYSCTLS.iter().any(|(k, _, _)| *k == key)
+                        || value.is_empty()
+                        || !value.chars().all(|c| c.is_ascii_digit())
+                    {
+                        return Err(format!("Open Task Manager doesn't change {key}."));
+                    }
+                    ufw_back.push((key.to_string(), value.to_string()));
+                    continue;
+                }
                 let (key, value) = pair.split_once('=').ok_or("Not a setting")?;
                 let allowed = if fix == "sysctl" {
                     SYSCTLS.iter().any(|(k, v, _)| *k == key && *v == value)
@@ -600,19 +628,52 @@ fn apply(fix: &str, target: Option<&str>) -> Result<Applied, String> {
                 text.push_str(&format!("{k} = {v}\n"));
             }
             let sets: Vec<String> = pairs.iter().map(|(k, v)| format!("{k}={v}")).collect();
-            let mut args = vec!["/bin/sh".to_string(), "-c".into()];
-            if kept.is_empty() {
-                args.push(r#"rm -f "$1"; shift; sysctl -q -w "$@""#.into());
-            } else {
-                args.push(r#"f="$1"; shift; cat > "$f" && sysctl -q -w "$@""#.into());
-            }
-            args.push("sh".into());
-            args.push(SYSCTL_FILE.into());
-            args.extend(sets.iter().cloned());
-            admin_with_input(&args, if kept.is_empty() { None } else { Some(&text) })?;
+            // ufw's file: settings made here go in it too where it sets them
+            // otherwise; restoring puts its values back.
+            let ufw_old = ufw_text();
+            let mut ufw_new = ufw_old.clone();
+            let mut ufw_undo = Vec::new();
             if fix == "sysctl" {
-                let undo: Vec<String> =
-                    before.iter().filter(|(_, v)| !v.is_empty()).map(|(k, v)| format!("{k}={v}")).collect();
+                for (key, value) in &pairs {
+                    if let Some(theirs) = ufw_value(&ufw_new, key).filter(|v| v != value) {
+                        ufw_new = ufw_set(&ufw_new, key, value);
+                        ufw_undo.push(format!("ufw:{key}={theirs}"));
+                    }
+                }
+            } else {
+                for (key, value) in &ufw_back {
+                    ufw_new = ufw_set(&ufw_new, key, value);
+                }
+            }
+            // The new ufw file goes through a copy only this user can reach;
+            // root then writes it over ufw's, keeping its owner and permissions.
+            let staged = if ufw_new != ufw_old { Some(stage(&ufw_new)?) } else { None };
+            let args: Vec<String> = [
+                "/bin/sh",
+                "-c",
+                r#"f="$1"; m="$2"; u="$3"; shift 3
+                   if [ "$m" = write ]; then cat > "$f" || exit 1; else rm -f "$f"; fi
+                   if [ -n "$u" ]; then cat "$u" > /etc/ufw/sysctl.conf || exit 1; fi
+                   if [ $# -gt 0 ]; then sysctl -q -w "$@"; fi"#,
+                "sh",
+                SYSCTL_FILE,
+                if kept.is_empty() { "remove" } else { "write" },
+            ]
+            .into_iter()
+            .map(String::from)
+            .chain([staged.as_ref().map(|s| s.file.to_string_lossy().into_owned()).unwrap_or_default()])
+            .chain(sets.iter().cloned())
+            .collect();
+            let result = admin_with_input(&args, if kept.is_empty() { None } else { Some(&text) });
+            drop(staged);
+            result?;
+            if fix == "sysctl" {
+                let undo: Vec<String> = before
+                    .iter()
+                    .filter(|(_, v)| !v.is_empty())
+                    .map(|(k, v)| format!("{k}={v}"))
+                    .chain(ufw_undo)
+                    .collect();
                 let label =
                     if pairs.len() == 1 { format!("Set {}", sets[0]) } else { format!("Set {}", sets.join(", ")) };
                 done(
@@ -746,6 +807,63 @@ fn apply(fix: &str, target: Option<&str>) -> Result<Applied, String> {
     }
 }
 
+fn ufw_text() -> String {
+    fs::read_to_string(UFW_SYSCTL).unwrap_or_default()
+}
+
+/// The value ufw's file sets for a key, written there with slashes
+/// ("net/ipv4/conf/all/log_martians=0") or dots.
+fn ufw_value(text: &str, key: &str) -> Option<String> {
+    text.lines().find_map(|l| ufw_line(l, key)).map(|(_, v)| v.to_string())
+}
+
+fn ufw_line<'a>(line: &'a str, key: &str) -> Option<(&'a str, &'a str)> {
+    let l = line.trim();
+    if l.starts_with('#') {
+        return None;
+    }
+    let (k, v) = l.split_once('=')?;
+    (k.trim().replace('/', ".") == key).then(|| (k, v.trim()))
+}
+
+/// ufw's file with a key's value changed where it is set; the rest is kept as it was.
+fn ufw_set(text: &str, key: &str, value: &str) -> String {
+    let mut out: String = text
+        .lines()
+        .map(|l| match ufw_line(l, key) {
+            Some((k, _)) => format!("{}={value}", k.trim()),
+            None => l.to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    if text.ends_with('\n') {
+        out.push('\n');
+    }
+    out
+}
+
+/// A file in a folder only this user can open, removed when dropped.
+struct Staged {
+    dir: std::path::PathBuf,
+    file: std::path::PathBuf,
+}
+
+impl Drop for Staged {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.dir);
+    }
+}
+
+fn stage(text: &str) -> Result<Staged, String> {
+    use std::os::unix::fs::DirBuilderExt;
+    let dir = std::env::temp_dir().join(format!("otm-security-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::DirBuilder::new().mode(0o700).create(&dir).map_err(|e| e.to_string())?;
+    let staged = Staged { file: dir.join("sysctl.conf"), dir };
+    fs::write(&staged.file, text).map_err(|e| e.to_string())?;
+    Ok(staged)
+}
+
 /// Writes one of this app's files as administrator; an empty list removes it.
 fn write_file(path: &str, lines: &[String], header: &str) -> Result<(), String> {
     if lines.is_empty() {
@@ -825,6 +943,21 @@ mod tests {
     }
 
     #[test]
+    fn edits_ufw_settings() {
+        let text = "# Uncomment this to allow this host to route packets\n\
+                    #net/ipv4/ip_forward=1\n\
+                    net/ipv4/conf/default/log_martians=0\n\
+                    net/ipv4/conf/all/log_martians=0\n";
+        assert_eq!(ufw_value(text, "net.ipv4.conf.default.log_martians").as_deref(), Some("0"));
+        assert_eq!(ufw_value(text, "net.ipv4.ip_forward"), None);
+        let new = ufw_set(text, "net.ipv4.conf.default.log_martians", "1");
+        assert!(new.contains("net/ipv4/conf/default/log_martians=1\n"));
+        assert!(new.contains("net/ipv4/conf/all/log_martians=0\n"));
+        assert!(new.contains("#net/ipv4/ip_forward=1\n"));
+        assert_eq!(new.lines().count(), 4);
+    }
+
+    #[test]
     fn refuses_what_is_not_listed() {
         assert!(apply("chmod", Some("/etc/shadow:600:640")).is_err());
         assert!(apply("sysctl", Some("kernel.modules_disabled=1")).is_err());
@@ -832,5 +965,7 @@ mod tests {
         assert!(apply("blacklist", Some("ext4")).is_err());
         assert!(apply("service-on", Some("sshd.service")).is_err());
         assert!(apply("unit-security", Some("--root=/")).is_err());
+        assert!(apply("sysctl", Some("ufw:kernel.sysrq=1")).is_err());
+        assert!(apply("sysctl-restore", Some("ufw:kernel.modules_disabled=1")).is_err());
     }
 }
