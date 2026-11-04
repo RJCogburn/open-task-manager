@@ -96,6 +96,11 @@ so a page built from them fits in.
 | `host.run(name)` | Runs the command your manifest declares under `name`. Resolves to `{ status, stdout, stderr }` |
 | `host.format` | The app's formatting: `bytes`, `rate`, `netRate`, `pct`, `ghz`, `temp`, `watts`, `duration`… They follow the user's unit settings |
 
+While the user has paused the graphs (by clicking one, or pressing Space),
+`onSample` stops calling and `history` returns the history as it was at the
+pause, so a plugin's charts and readings pause with the app's. Both carry on
+when the graphs resume.
+
 ### History keys
 
 `cpu`, `core:<n>`, `freq`, `cpuTemp`, `mem`, `memBytes`, `swap`,
