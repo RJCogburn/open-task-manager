@@ -60,6 +60,105 @@
   --temp: #e85a20;
 }
 
+/* Neon: a control-room look. Deep navy, flat panels edged in glowing cyan,
+   square corners, and bracketed uppercase titles. Graphs glow too: Chart
+   reads --chart-glow. */
+:root[data-theme="neon"] {
+  --bg: #050a14;
+  /* A faint grid, drawn by the browser: no image to load. */
+  --bg-glow: radial-gradient(1000px 600px at 50% -20%, rgba(0, 229, 255, 0.10), transparent 65%),
+    linear-gradient(rgba(0, 229, 255, 0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(0, 229, 255, 0.035) 1px, transparent 1px) 0 0 / 32px 32px;
+  --sidebar: #060d1a;
+  --panel: rgba(8, 18, 34, 0.88);
+  --panel-2: #0b1a2e;
+  --panel-hover: rgba(0, 229, 255, 0.08);
+  --border: rgba(0, 229, 255, 0.22);
+  --border-strong: rgba(0, 229, 255, 0.5);
+  --text: #dff8ff;
+  --muted: #7fb3c8;
+  --faint: #4a7186;
+  --grid: rgba(0, 229, 255, 0.08);
+  --shadow: 0 0 0 1px rgba(0, 229, 255, 0.04) inset, 0 0 18px rgba(0, 229, 255, 0.07);
+
+  --cpu: #00e5ff;
+  --mem: #b46bff;
+  --disk: #39ff9f;
+  --net: #ffcc33;
+  --gpu: #ff4fd8;
+  --temp: #ff7a3d;
+  --ok: #39ff9f;
+  --warn: #ffcc33;
+  --bad: #ff3d6e;
+  --accent: #00e5ff;
+  --chart-glow: 8;
+
+  --radius: 4px;
+  --radius-sm: 3px;
+  font-family: "Space Grotesk Variable", "Inter", "Noto Sans", system-ui, sans-serif;
+}
+
+[data-theme="neon"] .card {
+  backdrop-filter: blur(2px);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+[data-theme="neon"] .card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.12) inset, 0 0 24px rgba(0, 229, 255, 0.16);
+}
+
+[data-theme="neon"] .card h3 {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.45);
+}
+
+[data-theme="neon"] .card h3::before {
+  content: "[ ";
+  opacity: 0.6;
+}
+
+[data-theme="neon"] .card h3::after {
+  content: " ]";
+  opacity: 0.6;
+}
+
+[data-theme="neon"] .big,
+[data-theme="neon"] .stat b {
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+}
+
+[data-theme="neon"] .btn,
+[data-theme="neon"] .input,
+[data-theme="neon"] .seg {
+  border-color: var(--border);
+  background: rgba(0, 229, 255, 0.04);
+}
+
+[data-theme="neon"] .btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+}
+
+[data-theme="neon"] .btn.primary {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+}
+
+[data-theme="neon"] .seg button[aria-pressed="true"] {
+  background: rgba(0, 229, 255, 0.16);
+  color: var(--accent);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3) inset;
+}
+
 * {
   box-sizing: border-box;
 }

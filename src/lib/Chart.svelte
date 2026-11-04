@@ -74,6 +74,8 @@
     const pad = 2;
     const h = height - pad * 2;
     const look = settings.chart;
+    // Themes can make lines glow (Neon does); most leave --chart-glow unset.
+    const glow = Number(resolve("var(--chart-glow)")) || 0;
     const slots = historyLength();
     const step = width / (slots - 1);
     const y = (v: number) => pad + h - (Math.min(v, peak) / peak) * h;
@@ -143,7 +145,10 @@
       ctx.strokeStyle = color;
       ctx.lineWidth = look.thickness;
       ctx.lineJoin = "round";
+      ctx.shadowColor = color;
+      ctx.shadowBlur = glow;
       ctx.stroke(path);
+      ctx.shadowBlur = 0;
     }
 
     if (hover != null) {

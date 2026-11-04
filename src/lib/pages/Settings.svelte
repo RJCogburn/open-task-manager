@@ -130,7 +130,7 @@
     <div class="field">
       <span>Theme</span>
       <div class="seg" role="group" aria-label="Theme">
-        {#each [["system", "System"], ["dark", "Dark"], ["light", "Light"]] as const as [id, label] (id)}
+        {#each [["system", "System"], ["dark", "Dark"], ["light", "Light"], ["neon", "Neon"]] as const as [id, label] (id)}
           <button aria-pressed={settings.theme === id} onclick={() => live.setTheme(id)}>{label}</button>
         {/each}
       </div>

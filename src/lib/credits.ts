@@ -18,6 +18,13 @@ export type Credit = {
 };
 
 export const credits = {
+  spaceGrotesk: {
+    name: "Space Grotesk",
+    role: "The typeface of the Neon theme",
+    license: "OFL-1.1",
+    url: "https://github.com/floriankarsten/space-grotesk",
+    group: "built",
+  },
   lmSensors: {
     name: "lm-sensors",
     role: "Temperatures, fan speeds, voltages and power (the sensors command)",

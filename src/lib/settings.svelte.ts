@@ -6,7 +6,7 @@ export type ChartStyle = "smooth" | "straight" | "step" | "bars";
 
 export type Settings = {
   intervalMs: number;
-  theme: "system" | "dark" | "light";
+  theme: "system" | "dark" | "light" | "neon";
   /** A page id, or "last" for wherever the window was when it closed. */
   startPage: string;
   lastPage: string;
