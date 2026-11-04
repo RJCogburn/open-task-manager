@@ -6,7 +6,8 @@
   import { benchmarks } from "$lib/benchmarks.svelte";
   import { bytes, pct } from "$lib/format";
   import { live } from "$lib/live.svelte";
-  import { defaults, resetSettings, settings, type ChartStyle } from "$lib/settings.svelte";
+  import { defaults, resetSettings, setToolOn, settings, toolOn, type ChartStyle } from "$lib/settings.svelte";
+  import { tools } from "../../tools/registry";
   import { updates } from "$lib/updates.svelte";
 
   let widgets = $state<WidgetStatus | null>(null);
@@ -322,6 +323,21 @@
     <div class="field">
       <span class="faint">Results are kept on this computer only.</span>
       <button class="btn" onclick={clearBenchmarks}>Clear saved results</button>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h3>Pages</h3>
+    <p class="faint hint">
+      Switch off the pages you don't use. They leave the sidebar and do no work. Overview always stays.
+    </p>
+    <div class="kinds">
+      {#each tools as t (t.id)}
+        <label class="kind">
+          <input type="checkbox" checked={toolOn(t.id)} disabled={t.id === "overview"} onchange={(e) => setToolOn(t.id, e.currentTarget.checked)} />
+          <span><b>{t.label}</b></span>
+        </label>
+      {/each}
     </div>
   </section>
 

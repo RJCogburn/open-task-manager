@@ -6,6 +6,7 @@
   import { api, type Proc } from "$lib/api";
   import { bytes, temp, duration, ghz, pct, rate, netRate, watts } from "$lib/format";
   import { live, poll } from "$lib/live.svelte";
+  import { toolOn } from "$lib/settings.svelte";
 
   const s = $derived(live.sample);
   const info = $derived(live.info);
@@ -14,6 +15,7 @@
 
   let top = $state<Proc[]>([]);
   poll(async () => {
+    if (!toolOn("processes")) return;
     const list = await api.processes();
     top = list.sort((a, b) => b.cpu - a.cpu).slice(0, 6);
   }, () => Math.max(2000, live.settings.intervalMs));
@@ -28,6 +30,7 @@
   <div class="empty"><span class="spinner"></span> Collecting the first readings…</div>
 {:else}
   <div use:board={{ group: "overview", min: 330 }}>
+    {#if toolOn("cpu")}
     <section class="card tile" use:card={{ group: "overview", id: "cpu" }}>
       <div class="head">
         <Gauge value={s.cpu} color="var(--cpu)" label="CPU usage" />
@@ -41,7 +44,9 @@
       </div>
       <Chart label="CPU usage" series={[{ label: "CPU", data: live.history("cpu"), color: "var(--cpu)" }]} tick={live.tick} height={90} format={(v) => pct(v)} />
     </section>
+    {/if}
 
+    {#if toolOn("memory")}
     <section class="card tile" use:card={{ group: "overview", id: "memory" }}>
       <div class="head">
         <Gauge value={(s.memUsed / s.memTotal) * 100} color="var(--mem)" label="Memory in use" />
@@ -55,7 +60,9 @@
       </div>
       <Chart label="Memory in use" series={[{ label: "Memory", data: live.history("mem"), color: "var(--mem)" }]} tick={live.tick} height={90} format={(v) => pct(v)} />
     </section>
+    {/if}
 
+    {#if toolOn("gpu")}
     {#each s.gpus as g (g.id)}
       <section class="card tile" use:card={{ group: "overview", id: `gpu:${g.id}` }}>
         <div class="head">
@@ -71,7 +78,9 @@
         <Chart label="{g.name} load" series={[{ label: "Load", data: live.history(`gpu:${g.id}:util`), color: "var(--gpu)" }]} tick={live.tick} height={90} format={(v) => pct(v)} />
       </section>
     {/each}
+    {/if}
 
+    {#if toolOn("disks")}
     {#each s.disks as d (d.name)}
       <section class="card tile" use:card={{ group: "overview", id: `disk:${d.name}` }}>
         <div class="head">
@@ -95,7 +104,9 @@
         />
       </section>
     {/each}
+    {/if}
 
+    {#if toolOn("network")}
     {#each nets as n (n.name)}
       <section class="card tile" use:card={{ group: "overview", id: `net:${n.name}` }}>
         <div class="head simple">
@@ -120,7 +131,9 @@
         />
       </section>
     {/each}
+    {/if}
 
+    {#if toolOn("processes")}
     <section class="card" use:card={{ group: "overview", id: "processes" }}>
       <h3>Busiest processes</h3>
       <ol class="top">
@@ -139,6 +152,7 @@
         <div class="stat"><span>Load average</span><b>{s.load.map((l) => l.toFixed(2)).join(" ")}</b></div>
       </div>
     </section>
+    {/if}
   </div>
 {/if}
 

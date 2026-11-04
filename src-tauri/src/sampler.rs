@@ -2,6 +2,10 @@
 //! processes, disk and network counters on a timer and sends the result to the
 //! window as a `sample` event. Pages that need more (the process table) read
 //! the same refreshed `System` instead of refreshing it again.
+//!
+//! GPU, disk and network readings are skipped while nothing needs them: their
+//! page is switched off, and neither the widget panel, the readings feed nor
+//! the log uses them.
 
 use std::collections::HashMap;
 use std::fs;
@@ -130,17 +134,32 @@ pub(crate) struct NetIo {
     pub(crate) tx_total: u64,
 }
 
+/// Pages switched off in the window, by tool id.
+pub type DisabledTools = Arc<Mutex<Vec<String>>>;
+
+#[allow(clippy::too_many_arguments)]
 pub fn spawn(
     app: AppHandle,
     shared: Arc<Mutex<Shared>>,
     gpu: Arc<GpuMonitor>,
     interval_ms: Arc<AtomicU64>,
+    disabled: DisabledTools,
     logger: Arc<Logger>,
     tray: Arc<Tray>,
     widgets: Arc<Widgets>,
 ) {
+    // "gpu", "disks" and "network" are both tool ids and kinds of reading.
+    let wanted = {
+        let (logger, widgets) = (logger.clone(), widgets.clone());
+        move |kind: &str| {
+            !disabled.lock().unwrap().iter().any(|t| t == kind) || widgets.wants(kind) || logger.wants(kind)
+        }
+    };
     thread::spawn(move || {
         let mut networks = Networks::new_with_refreshed_list().ok();
+        // After a pause the counters cover the whole pause, so the first
+        // refresh only starts them again.
+        let mut nets_paused = false;
         let mut disks = DiskStats::default();
         disks.read();
         let cpu_temp = find_cpu_temp_input();
@@ -191,9 +210,18 @@ pub fn spawn(
             };
 
             sample.cpu_temp = cpu_temp.as_ref().and_then(read_millidegrees);
-            sample.disks = disks.rates(dt);
-            if let Some(networks) = networks.as_mut() {
+            if wanted("disks") {
+                sample.disks = disks.rates(dt);
+            } else {
+                disks.pause();
+            }
+            if !wanted("network") {
+                nets_paused = true;
+            } else if let Some(networks) = networks.as_mut() {
                 networks.refresh(true);
+                if std::mem::take(&mut nets_paused) {
+                    networks.refresh(true);
+                }
                 sample.nets = networks
                     .iter()
                     .filter(|(name, _)| name.as_os_str() != "lo")
@@ -207,7 +235,7 @@ pub fn spawn(
                     .collect();
                 sample.nets.sort_by(|a, b| a.name.cmp(&b.name));
             }
-            sample.gpus = gpu.sample();
+            sample.gpus = gpu.sample(wanted("gpu"));
             logger.record(&sample);
             tray.update(&sample);
             widgets.feed(&sample);
@@ -252,6 +280,12 @@ struct DiskStats {
 }
 
 impl DiskStats {
+    /// Forgets the counters, so the first rates after a pause don't cover it.
+    fn pause(&mut self) {
+        self.prev.clear();
+        self.now.clear();
+    }
+
     fn read(&mut self) {
         self.now.clear();
         let Ok(text) = fs::read_to_string("/proc/diskstats") else { return };
@@ -378,6 +412,11 @@ pub fn mounts() -> Vec<Mount> {
             removable: d.is_removable(),
         })
         .collect()
+}
+
+#[tauri::command]
+pub fn set_disabled_tools(state: State<'_, AppState>, tools: Vec<String>) {
+    *state.disabled_tools.lock().unwrap() = tools;
 }
 
 #[tauri::command]

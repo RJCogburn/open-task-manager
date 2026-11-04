@@ -19,6 +19,7 @@ use tauri::Manager;
 pub struct AppState {
     shared: Arc<Mutex<sampler::Shared>>,
     interval_ms: Arc<AtomicU64>,
+    disabled_tools: sampler::DisabledTools,
     scan: Arc<tools::disk_space::ScanState>,
     health: Arc<tools::disks::HealthCache>,
     net: Arc<tools::network::NetState>,
@@ -50,6 +51,7 @@ pub fn run() {
     tauri::async_runtime::set(runtime.handle().clone());
     let shared = Arc::new(Mutex::new(sampler::Shared::new()));
     let interval_ms = Arc::new(AtomicU64::new(1000));
+    let disabled_tools = sampler::DisabledTools::default();
     let gpu = Arc::new(gpu::GpuMonitor::start());
     let logger = Arc::new(logging::Logger::load());
     let tray = Arc::new(tray::Tray::load());
@@ -57,6 +59,7 @@ pub fn run() {
     let state = AppState {
         shared: shared.clone(),
         interval_ms: interval_ms.clone(),
+        disabled_tools: disabled_tools.clone(),
         scan: Arc::default(),
         health: Arc::default(),
         net: Arc::default(),
@@ -76,7 +79,16 @@ pub fn run() {
             if let Err(e) = tray.apply(app.handle()) {
                 eprintln!("{e}");
             }
-            sampler::spawn(app.handle().clone(), shared, gpu, interval_ms, logger, tray.clone(), widgets.clone());
+            sampler::spawn(
+                app.handle().clone(),
+                shared,
+                gpu,
+                interval_ms,
+                disabled_tools,
+                logger,
+                tray.clone(),
+                widgets.clone(),
+            );
             if let Err(e) = widgets.apply(app.handle()) {
                 eprintln!("{e}");
             }
@@ -117,6 +129,7 @@ pub fn run() {
             // The app itself
             sampler::system_info,
             sampler::mounts,
+            sampler::set_disabled_tools,
             sampler::set_interval,
             logging::logging_get,
             logging::logging_set,

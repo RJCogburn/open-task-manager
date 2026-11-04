@@ -150,6 +150,13 @@ impl Widgets {
         let _ = self.save();
     }
 
+    /// Whether the panel or the feed needs a kind of reading: "gpu", "disks"
+    /// or "network". The temperature reading includes the graphics card's.
+    pub fn wants(&self, kind: &str) -> bool {
+        let c = self.config.lock().unwrap();
+        c.feed || (c.enabled && c.items.iter().any(|i| i == kind || (kind == "gpu" && i == "temperature")))
+    }
+
     /// Writes the latest readings for other desktop widgets, if turned on.
     /// Written to a temporary file and renamed, so readers never see half a file.
     pub fn feed(&self, s: &Sample) {

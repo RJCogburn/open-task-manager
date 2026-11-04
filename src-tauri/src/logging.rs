@@ -81,6 +81,19 @@ impl Logger {
         Self { config: Mutex::new(config), last: Mutex::new(None), day: Mutex::new(String::new()) }
     }
 
+    /// Whether the log records a kind of reading: "gpu", "disks" or
+    /// "network". Temperatures include the graphics cards'.
+    pub fn wants(&self, kind: &str) -> bool {
+        let c = self.config.lock().unwrap();
+        c.enabled
+            && match kind {
+                "gpu" => c.gpu || c.temperatures,
+                "disks" => c.disks,
+                "network" => c.network,
+                _ => false,
+            }
+    }
+
     pub fn record(&self, s: &Sample) {
         let config = self.config.lock().unwrap().clone();
         if !config.enabled {

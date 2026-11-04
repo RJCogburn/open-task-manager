@@ -18,7 +18,7 @@ system already has in one window, with live graphs.
 - **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
 - **Desktop widgets**: a see-through panel with the readings you pick, and a [readings feed](docs/readings-feed.md) so Plasma widgets, GNOME extensions or conky can show them too
 - **Updates**: tells you when a new version is out; installs it on request or automatically (signed updates for the AppImage, .deb and .rpm)
-- **Settings**: graph style, units, start page, start at login, and logging chosen hardware to CSV files
+- **Settings**: graph style, units, start page, start at login, logging chosen hardware to CSV files, and switching off pages you don't use (their readings stop too, unless a widget or the log still uses them)
 
 ![Overview: every processor, graphics card, drive and network interface at a glance](docs/screenshots/overview.png)
 

@@ -7,23 +7,26 @@
   import { live } from "./lib/live.svelte";
   import About from "./lib/pages/About.svelte";
   import Settings from "./lib/pages/Settings.svelte";
-  import { settings } from "./lib/settings.svelte";
+  import { settings, toolOn } from "./lib/settings.svelte";
   import { sections as toolSections, tools } from "./tools/registry";
 
   type Page = { id: string; label: string; icon: string; component: Component; color?: string; value?: () => string };
 
   const about: Page = { id: "about", label: "About & Credits", icon: "about", component: About };
   // Tools draw their own icon path; the app's own pages name one of Icon's.
-  const sections: { title: string; pages: (Page & { path?: string })[] }[] = [
-    ...toolSections.map((sec) => ({
-      title: sec.title,
-      pages: tools
-        .filter((t) => t.section === sec.id)
-        .map((t) => ({ id: t.id, label: t.label, icon: "", path: t.icon, component: t.page, color: t.color, value: t.value })),
-    })),
+  // Tools switched off in Settings leave the sidebar; a section left empty goes too.
+  const sections: { title: string; pages: (Page & { path?: string })[] }[] = $derived([
+    ...toolSections
+      .map((sec) => ({
+        title: sec.title,
+        pages: tools
+          .filter((t) => t.section === sec.id && toolOn(t.id))
+          .map((t) => ({ id: t.id, label: t.label, icon: "", path: t.icon, component: t.page, color: t.color, value: t.value })),
+      }))
+      .filter((sec) => sec.pages.length),
     { title: "", pages: [about] },
-  ];
-  const all = sections.flatMap((x) => x.pages);
+  ]);
+  const all = $derived(sections.flatMap((x) => x.pages));
 
   let current = $state(
     location.hash.slice(1) || (settings.startPage === "last" ? settings.lastPage : settings.startPage) || "overview",

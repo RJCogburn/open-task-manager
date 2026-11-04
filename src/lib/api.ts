@@ -271,6 +271,7 @@ export const api = {
   drives: () => invoke<Drive[]>("drives"),
   driveHealthAdmin: () => invoke<void>("drive_health_admin"),
   setInterval: (ms: number) => invoke<void>("set_interval", { ms }),
+  setDisabledTools: (tools: string[]) => invoke<void>("set_disabled_tools", { tools }),
   processes: () => invoke<Proc[]>("processes"),
   endProcess: (pid: number, force: boolean) => invoke<void>("end_process", { pid, force }),
   setPriority: (pid: number, nice: number) => invoke<void>("set_priority", { pid, nice }),

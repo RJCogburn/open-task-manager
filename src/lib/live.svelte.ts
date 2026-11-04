@@ -64,6 +64,10 @@ class Live {
   async start() {
     this.applyTheme();
     await api.setInterval(this.settings.intervalMs);
+    // The sampler skips readings only switched-off pages would use.
+    $effect.root(() => {
+      $effect(() => void api.setDisabledTools([...this.settings.disabledTools]));
+    });
     this.info = await api.systemInfo();
     // History keeps recording while the window is hidden in the tray, but
     // pages only redraw when it can be seen.

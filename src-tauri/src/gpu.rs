@@ -1,12 +1,14 @@
 //! GPU readings. NVIDIA cards come from one long-running `nvidia-smi` that
 //! prints a line per card every second; AMD cards come from the amdgpu
-//! driver's files in /sys/class/drm.
+//! driver's files in /sys/class/drm. While nothing needs GPU readings,
+//! `nvidia-smi` is stopped.
 
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -33,6 +35,10 @@ pub struct GpuSample {
 
 pub struct GpuMonitor {
     nvidia: Arc<Mutex<Vec<GpuSample>>>,
+    /// The running `nvidia-smi`, while GPU readings are wanted.
+    nvidia_smi: Mutex<Option<Child>>,
+    /// False when there is no `nvidia-smi`, or it would not start.
+    has_nvidia_smi: AtomicBool,
     amd: Vec<AmdCard>,
 }
 
@@ -45,14 +51,34 @@ struct AmdCard {
 
 impl GpuMonitor {
     pub fn start() -> Self {
-        let nvidia = Arc::new(Mutex::new(Vec::new()));
-        if programs::which("nvidia-smi").is_some() {
-            start_nvidia_smi(nvidia.clone());
+        Self {
+            nvidia: Arc::default(),
+            nvidia_smi: Mutex::new(None),
+            has_nvidia_smi: AtomicBool::new(programs::which("nvidia-smi").is_some()),
+            amd: find_amd_cards(),
         }
-        Self { nvidia, amd: find_amd_cards() }
     }
 
-    pub fn sample(&self) -> Vec<GpuSample> {
+    /// The latest readings, or none when they aren't `wanted`. Starts
+    /// `nvidia-smi` when readings are wanted again, and stops it when not.
+    pub fn sample(&self, wanted: bool) -> Vec<GpuSample> {
+        let mut child = self.nvidia_smi.lock().unwrap();
+        if !wanted {
+            if let Some(mut c) = child.take() {
+                let _ = c.kill();
+                let _ = c.wait();
+            }
+            return Vec::new();
+        }
+        if child.is_none() && self.has_nvidia_smi.load(Ordering::Relaxed) {
+            // Readings from before the pause would show as current.
+            self.nvidia.lock().unwrap().clear();
+            *child = start_nvidia_smi(self.nvidia.clone());
+            if child.is_none() {
+                self.has_nvidia_smi.store(false, Ordering::Relaxed);
+            }
+        }
+        drop(child);
         let mut out = self.nvidia.lock().unwrap().clone();
         out.extend(self.amd.iter().map(AmdCard::sample));
         out
@@ -62,23 +88,25 @@ impl GpuMonitor {
 const NVIDIA_FIELDS: &str =
     "index,name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit,clocks.gr,fan.speed";
 
-fn start_nvidia_smi(out: Arc<Mutex<Vec<GpuSample>>>) {
+/// Starts `nvidia-smi` and a thread that keeps `out` filled from it. The
+/// thread ends when `nvidia-smi` does.
+fn start_nvidia_smi(out: Arc<Mutex<Vec<GpuSample>>>) -> Option<Child> {
+    let mut command = Command::new("nvidia-smi");
+    command
+        .args([&format!("--query-gpu={NVIDIA_FIELDS}"), "--format=csv,noheader,nounits", "-lms", "1000"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    // Stop nvidia-smi when this app exits, even if it crashes.
+    unsafe {
+        command.pre_exec(|| {
+            libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+            Ok(())
+        });
+    }
+    let mut child = command.spawn().ok()?;
+    let stdout = child.stdout.take()?;
     thread::spawn(move || {
-        let mut command = Command::new("nvidia-smi");
-        command
-            .args([&format!("--query-gpu={NVIDIA_FIELDS}"), "--format=csv,noheader,nounits", "-lms", "1000"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
-        // Stop nvidia-smi when this app exits, even if it crashes.
-        unsafe {
-            command.pre_exec(|| {
-                libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
-                Ok(())
-            });
-        }
-        let Ok(mut child) = command.spawn() else { return };
-        let Some(stdout) = child.stdout.take() else { return };
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
             let f: Vec<&str> = line.split(',').map(str::trim).collect();
             if f.len() < 10 {
@@ -105,8 +133,8 @@ fn start_nvidia_smi(out: Arc<Mutex<Vec<GpuSample>>>) {
                 None => gpus.push(sample),
             }
         }
-        let _ = child.wait();
     });
+    Some(child)
 }
 
 fn find_amd_cards() -> Vec<AmdCard> {

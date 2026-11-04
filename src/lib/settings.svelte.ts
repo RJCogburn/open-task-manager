@@ -29,6 +29,8 @@ export type Settings = {
   cardOrder: Record<string, string[]>;
   /** Each board's columns of card ids, as the user arranged them. */
   cardLayout: Record<string, string[][]>;
+  /** Tools switched off in Settings. Kept as the ones off, so a new tool starts on. */
+  disabledTools: string[];
   updates: {
     /** null until the user has been asked; checking contacts GitHub. */
     autoCheck: boolean | null;
@@ -56,6 +58,7 @@ export const defaults: Settings = {
   speedTest: "auto",
   cardOrder: {},
   cardLayout: {},
+  disabledTools: [],
   updates: { autoCheck: null, autoInstall: false, lastCheck: 0, dismissed: "" },
 };
 
@@ -80,6 +83,14 @@ export const settings = $state<Settings>(load());
 $effect.root(() => {
   $effect(() => localStorage.setItem(KEY, JSON.stringify(settings)));
 });
+
+/** Whether a tool is switched on. Overview can't be switched off: it's where the app falls back to. */
+export const toolOn = (id: string) => id === "overview" || !settings.disabledTools.includes(id);
+
+export function setToolOn(id: string, on: boolean) {
+  const rest = settings.disabledTools.filter((t) => t !== id);
+  settings.disabledTools = on ? rest : [...rest, id];
+}
 
 export function resetSettings() {
   // Keeps the update choice and check history: they're answers, not preferences to reset.
