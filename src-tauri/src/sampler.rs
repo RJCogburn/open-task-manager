@@ -4,8 +4,8 @@
 //! the same refreshed `System` instead of refreshing it again.
 //!
 //! GPU, disk and network readings are skipped while nothing needs them: their
-//! page is switched off, and neither the widget panel, the readings feed nor
-//! the log uses them.
+//! page is switched off, and neither the widget panel nor the log uses them.
+//! The readings feed shares only what is measured.
 
 use std::collections::HashMap;
 use std::fs;

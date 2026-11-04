@@ -23,6 +23,10 @@ reader never sees half a file. When the app is closed or sharing is turned
 off, the file stops changing; turning sharing off deletes it. Check `time` to
 tell fresh readings from stale ones.
 
+Readings for pages switched off in **Settings → Pages** are left out: with the
+GPU page off, `gpus` is empty, unless the widget panel or the log still uses
+them. Keep a page on to keep its readings in the feed.
+
 ## Format
 
 ```json

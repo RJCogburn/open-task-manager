@@ -150,11 +150,13 @@ impl Widgets {
         let _ = self.save();
     }
 
-    /// Whether the panel or the feed needs a kind of reading: "gpu", "disks"
-    /// or "network". The temperature reading includes the graphics card's.
+    /// Whether the panel needs a kind of reading: "gpu", "disks" or
+    /// "network". The temperature reading includes the graphics card's. The
+    /// feed doesn't count: it shares what the app measures, and readings for
+    /// pages switched off are left out of it.
     pub fn wants(&self, kind: &str) -> bool {
         let c = self.config.lock().unwrap();
-        c.feed || (c.enabled && c.items.iter().any(|i| i == kind || (kind == "gpu" && i == "temperature")))
+        c.enabled && c.items.iter().any(|i| i == kind || (kind == "gpu" && i == "temperature"))
     }
 
     /// Writes the latest readings for other desktop widgets, if turned on.
