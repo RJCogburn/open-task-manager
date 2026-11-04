@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { getContext } from "svelte";
+  import { getContext, onDestroy } from "svelte";
+  import Chart, { type Cursor } from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
-  import { api, parseError, type SlowdownAction, type SlowdownReport } from "$lib/api";
+  import { api, parseError, type SlowdownAction, type SlowdownCheck, type SlowdownReport, type WatchReport } from "$lib/api";
   import { toolOn } from "$lib/settings.svelte";
   import { tools } from "../registry";
 
@@ -64,12 +65,74 @@
         ]
       : [],
   );
+  // Watching for slowdowns that come and go.
+  const WATCH = 30;
+  let watching = $state(false);
+  let watchStart = $state(0);
+  let now = $state(Date.now());
+  let watched = $state<WatchReport | null>(null);
+  let watchError = $state("");
+  let at = $state<number | null>(null);
+  const timer = setInterval(() => (now = Date.now()), 250);
+  onDestroy(() => {
+    clearInterval(timer);
+    // Leaving the page stops watching; nothing would show the result.
+    if (watching) api.slowdownWatchStop();
+  });
+
+  async function watch() {
+    watching = true;
+    watchStart = Date.now();
+    watchError = "";
+    try {
+      watched = await api.slowdownWatch(WATCH);
+      at = null;
+    } catch (e) {
+      const message = parseError(e).message;
+      if (message !== "Stopped.") watchError = message;
+    } finally {
+      watching = false;
+    }
+  }
+
+  const left = $derived(Math.max(0, WATCH - Math.floor((now - watchStart) / 1000)));
+  const clock = (i: number) => `${Math.floor((i + 1) / 60)}:${String((i + 1) % 60).padStart(2, "0")}`;
+  const watchCursor: Cursor = {
+    get ago() {
+      return at;
+    },
+    move(ago) {
+      at = ago;
+    },
+    label(ago) {
+      const n = watched?.points.length ?? 0;
+      return `${clock(n - 1 - ago)} into the watch`;
+    },
+  };
+  const watchSeries = $derived(
+    watched
+      ? [
+          { label: "Waiting for the processor", data: watched.points.map((p) => p.cpuWait ?? NaN), color: "var(--cpu)", fill: false },
+          { label: "Waiting for memory", data: watched.points.map((p) => p.memoryWait ?? NaN), color: "var(--mem)", fill: false },
+          { label: "Waiting for the disks", data: watched.points.map((p) => p.ioWait ?? NaN), color: "var(--disk)", fill: false },
+          { label: "Processor busy", data: watched.points.map((p) => p.cpu), color: "var(--faint)", fill: true },
+        ]
+      : [],
+  );
+
   // A link only to pages that are switched on.
   const pageLabel = (id: string | null) => (id && toolOn(id) ? tools.find((t) => t.id === id)?.label : undefined);
 </script>
 
 <PageHeader title="Slowdown check" subtitle="What could be making your computer slow, checked just now">
   {#snippet actions()}
+    {#if watching}
+      <button class="btn" onclick={() => api.slowdownWatchStop()}>Stop watching</button>
+    {:else}
+      <button class="btn" onclick={watch} disabled={running} title="Catch slowdowns that come and go: samples every second for {WATCH} seconds">
+        Watch for {WATCH} s
+      </button>
+    {/if}
     <button class="btn primary" onclick={run} disabled={running}>{running ? "Checking…" : "Check again"}</button>
   {/snippet}
 </PageHeader>
@@ -95,12 +158,12 @@
     {/if}
   </section>
 
-  {#if problems.length}
+  {#snippet findings(list: SlowdownCheck[], prefix: string)}
     <div class="list">
-      {#each problems as c (key(c))}
-        {@const isOpen = open[key(c)] ?? false}
+      {#each list as c (prefix + key(c))}
+        {@const isOpen = open[prefix + key(c)] ?? false}
         <section class="card item {c.status}">
-          <button class="head" aria-expanded={isOpen} onclick={() => (open[key(c)] = !isOpen)}>
+          <button class="head" aria-expanded={isOpen} onclick={() => (open[prefix + key(c)] = !isOpen)}>
             <span class="dot" aria-hidden="true"></span>
             <span class="body">
               <h3>{c.title}</h3>
@@ -129,6 +192,44 @@
         </section>
       {/each}
     </div>
+  {/snippet}
+
+  {#if problems.length}
+    {@render findings(problems, "")}
+  {/if}
+
+  {#if watching}
+    <section class="card watching">
+      <span class="spinner"></span>
+      <div>
+        <b>Watching… {left} s left</b>
+        <p class="muted">Use your computer as you were when it felt slow; whatever comes and goes in these {WATCH} seconds is caught.</p>
+      </div>
+    </section>
+  {:else if watchError}
+    <div class="notice bad">{watchError}</div>
+  {/if}
+
+  {#if watched && !watching}
+    <section class="card watch">
+      <div class="spread">
+        <h3>Over {watched.points.length} seconds</h3>
+        <span class="faint">from {new Date(watched.started).toLocaleTimeString()}</span>
+      </div>
+      <Chart
+        label="Slowdown watch"
+        series={watchSeries}
+        slots={watched.points.length}
+        cursor={watchCursor}
+        tick={watched.started}
+        height={150}
+        format={(v) => `${v.toFixed(0)}%`}
+      />
+      <div class="legend faint">
+        {#each watchSeries as w (w.label)}<span><i style:background={w.color}></i>{w.label}</span>{/each}
+      </div>
+    </section>
+    {@render findings(watched.checks, "w:")}
   {/if}
 
   <section class="card">
@@ -277,6 +378,41 @@
 
   .ok .dot {
     background: var(--ok);
+  }
+
+  .watching {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .watching p {
+    margin: 4px 0 0;
+  }
+
+  .watch {
+    margin-bottom: 10px;
+  }
+
+  .watch h3 {
+    margin-bottom: 10px;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 8px;
+    font-size: 12px;
+  }
+
+  .legend i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin-right: 6px;
   }
 
   .fine {

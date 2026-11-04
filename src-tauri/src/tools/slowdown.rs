@@ -31,11 +31,11 @@ use crate::sampler::{self, Shared};
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Check {
-    id: &'static str,
-    title: String,
+    pub(super) id: &'static str,
+    pub(super) title: String,
     /// "bad", "warn", "ok", or "skipped" when it couldn't be checked.
-    status: &'static str,
-    detail: String,
+    pub(super) status: &'static str,
+    pub(super) detail: String,
     /// The page with more, by tool id.
     page: Option<&'static str>,
     /// Paragraphs on what was found, why it matters and what to do.
@@ -59,22 +59,27 @@ pub struct Action {
     admin: bool,
 }
 
-fn check(id: &'static str, status: &'static str, title: impl Into<String>, detail: impl Into<String>) -> Check {
+pub(super) fn check(
+    id: &'static str,
+    status: &'static str,
+    title: impl Into<String>,
+    detail: impl Into<String>,
+) -> Check {
     Check { id, title: title.into(), status, detail: detail.into(), page: None, more: Vec::new(), actions: Vec::new() }
 }
 
 impl Check {
-    fn page(mut self, page: &'static str) -> Self {
+    pub(super) fn page(mut self, page: &'static str) -> Self {
         self.page = Some(page);
         self
     }
 
-    fn more(mut self, paragraphs: impl IntoIterator<Item = String>) -> Self {
+    pub(super) fn more(mut self, paragraphs: impl IntoIterator<Item = String>) -> Self {
         self.more.extend(paragraphs);
         self
     }
 
-    fn action(mut self, action: Action) -> Self {
+    pub(super) fn action(mut self, action: Action) -> Self {
         self.actions.push(action);
         self
     }
@@ -120,7 +125,7 @@ fn read_pressure(kind: &str) -> Option<Stall> {
 }
 
 /// Pages swapped in and out since boot.
-fn swap_pages() -> u64 {
+pub(super) fn swap_pages() -> u64 {
     let text = fs::read_to_string("/proc/vmstat").unwrap_or_default();
     text.lines()
         .filter_map(|l| {
@@ -130,14 +135,14 @@ fn swap_pages() -> u64 {
         .sum()
 }
 
-struct Hog {
-    pid: u32,
-    name: String,
+pub(super) struct Hog {
+    pub(super) pid: u32,
+    pub(super) name: String,
     /// Percent of one core over the last second.
-    cpu: f32,
-    memory: u64,
+    pub(super) cpu: f32,
+    pub(super) memory: u64,
     /// Bytes read and written over the last second.
-    disk: u64,
+    pub(super) disk: u64,
 }
 
 /// What the checks look at, gathered once.
@@ -222,7 +227,7 @@ fn gb(bytes: u64) -> String {
 }
 
 /// "Ending" the app itself, or the desktop, would do more harm than good.
-fn endable(h: &Hog) -> bool {
+pub(super) fn endable(h: &Hog) -> bool {
     h.pid != std::process::id()
         && !matches!(
             h.name.as_str(),
@@ -238,7 +243,7 @@ fn endable(h: &Hog) -> bool {
         )
 }
 
-fn end_action(h: &Hog) -> Action {
+pub(super) fn end_action(h: &Hog) -> Action {
     Action {
         fix: "end-process",
         target: Some(format!("{}:{}", h.pid, h.name)),

@@ -31,6 +31,8 @@ pub mod security_fix;
 pub mod sensors;
 #[cfg(feature = "slowdown")]
 pub mod slowdown;
+#[cfg(feature = "slowdown")]
+pub mod slowdown_watch;
 
 /// Tools this build left out, by their id in `src/tools/`, so the window can
 /// leave out their pages too.

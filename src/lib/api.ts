@@ -227,6 +227,18 @@ export type SlowdownAction = {
 /** Share of the last minute some programs waited, in percent. */
 export type Pressure = { cpu: number; memory: number; io: number };
 export type SlowdownReport = { checks: SlowdownCheck[]; pressure: Pressure | null };
+/** One second of watching for slowdowns. */
+export type WatchPoint = {
+  /** Share of the second some program waited, in percent. */
+  cpuWait: number | null;
+  memoryWait: number | null;
+  ioWait: number | null;
+  /** How busy the processor was, in percent. */
+  cpu: number;
+  /** Pages swapped in and out. */
+  swapped: number;
+};
+export type WatchReport = { started: number; points: WatchPoint[]; checks: SlowdownCheck[] };
 
 export type AuditFinding = {
   /** Lynis's test id, such as "SSH-7408". */
@@ -415,6 +427,8 @@ export const api = {
   setDisabledTools: (tools: string[]) => invoke<void>("set_disabled_tools", { tools }),
   missingTools: () => invoke<string[]>("missing_tools"),
   slowdownCheck: () => invoke<SlowdownReport>("slowdown_check"),
+  slowdownWatch: (seconds: number) => invoke<WatchReport>("slowdown_watch", { seconds }),
+  slowdownWatchStop: () => invoke<void>("slowdown_watch_stop"),
   firmware: () => invoke<FirmwareReport>("firmware"),
   firmwareRefresh: () => invoke<void>("firmware_refresh"),
   firmwareUpdate: (deviceId: string) => invoke<string>("firmware_update", { deviceId }),

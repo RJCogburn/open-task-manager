@@ -231,6 +231,10 @@ pub fn run() {
             #[cfg(feature = "slowdown")]
             tools::slowdown::slowdown_check,
             #[cfg(feature = "slowdown")]
+            tools::slowdown_watch::slowdown_watch,
+            #[cfg(feature = "slowdown")]
+            tools::slowdown_watch::slowdown_watch_stop,
+            #[cfg(feature = "slowdown")]
             tools::slowdown::slowdown_fix,
         ])
         .run(tauri::generate_context!())
