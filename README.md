@@ -6,15 +6,19 @@ A free task manager for Linux. It brings together the open source tools your
 system already has in one window, with live graphs.
 
 - **Overview**: CPU, memory, every GPU, every drive and every network interface at a glance
+- **Slowdown check**: what could be making your computer slow right now (programs waiting on the processor, memory or disks, swapping, hogs, full or failing drives, heat, slow start-up), each explained, some with a fix
+- **History**: read back what the app recorded while you weren't watching, a day or part of one, with each line's average and peak; compare two days, such as before and after a change
+- **Pause the graphs**: click any graph to freeze every graph on the page at that moment, then step through time with the arrow keys
 - **Processes**: sortable, searchable; end, kill or change priority (asks for your password through polkit when a process belongs to someone else)
 - **CPU, Memory, Disks, Network, GPU**: live graphs and details; per-thread CPU graphs; NVIDIA through `nvidia-smi`, AMD through the amdgpu driver
-- **Disks**: a card per drive with model, space, temperature and SMART health, and a folder-by-folder look at what fills it
+- **Disks**: a card per drive with model, space, temperature and SMART health, and a folder-by-folder look at what fills it; each drive's firmware, updates from fwupd, known bad versions, and Western Digital updates with nvme-cli
 - **Network**: which programs use each interface, busiest first; flags programs that no installed package accounts for; internet speed test
 - **Power & Thermals**: every sensor lm-sensors can see, plus GPU power and CPU power (RAPL, needs root)
 - **Connections**: which programs hold which sockets, and which ones other computers can reach
 - **Disk Space**: a fast, parallel scan in the spirit of ncdu and Filelight; browse folders, largest files and space by file type
 - **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (LibreSpeed, or Ookla's speedtest if installed)
 - **Installed Apps**: pacman, dpkg, rpm and Flatpak packages by size
+- **Security audit**: runs [Lynis](https://github.com/CISOfy/lynis) and explains each finding; safe fixes come with a button and can be undone, and findings best left alone on a desktop say why
 - **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
 - **Desktop widgets**: a see-through panel with the readings you pick, and a [readings feed](docs/readings-feed.md) so Plasma widgets, GNOME extensions or conky can show them too
 - **Updates**: tells you when a new version is out; installs it on request or automatically (signed updates for the AppImage, .deb and .rpm)
@@ -110,6 +114,8 @@ installed, and the app tells you when one is missing and how to install it.
 | Disk benchmark | `fio` |
 | Graphics benchmark | `glmark2` |
 | Speed test matching speedtest.net | Ookla's [`speedtest`](https://www.speedtest.net/apps/cli) (free, not open source) |
+| Security audit | `lynis` (the page offers to install it) |
+| Drive firmware updates | `fwupd`; `nvme-cli` for Western Digital and SanDisk drives |
 
 The network and drive pages also use `iproute2`, `util-linux` and `curl`, which
 almost every system already has.
@@ -139,9 +145,10 @@ To add a tool of your own, see [CONTRIBUTING.md](CONTRIBUTING.md).
 ### Smaller builds
 
 Every tool with a Rust side can be left out of a build: `benchmarks`,
-`connections`, `disk-space`, `disks`, `installed-apps`, `network`, `processes`
-and `sensors`. CPU, Memory, GPU and Overview are always in. Name the tools to
-keep, and the pages of the rest are left out too:
+`connections`, `disk-space`, `disks`, `installed-apps`, `network`, `processes`,
+`security-audit`, `sensors` and `slowdown`. CPU, Memory, GPU, Overview and
+History are always in. Name the tools to keep, and the pages of the rest are
+left out too:
 
 ```sh
 npm run tauri build -- --features processes,disks,sensors -- --no-default-features
