@@ -292,6 +292,34 @@ export type LogConfig = {
   every: number;
   keepDays: number;
 };
+export type LogDay = { day: string; kinds: string[]; size: number };
+export type LogSeries = {
+  label: string;
+  /** The average in each slice of the window; null where nothing was recorded. */
+  values: (number | null)[];
+  avg: number | null;
+  max: number | null;
+  /** When the peak was, in seconds after midnight. */
+  maxAt: number | null;
+};
+export type LogGroup = {
+  id: string;
+  title: string;
+  unit: "percent" | "mhz" | "load" | "bytes" | "celsius" | "watts";
+  series: LogSeries[];
+};
+export type LogView = {
+  day: string;
+  /** The window, in seconds after midnight. */
+  from: number;
+  to: number;
+  /** Seconds each value covers. */
+  slice: number;
+  /** Seconds between recorded rows. */
+  every: number | null;
+  rows: number;
+  groups: LogGroup[];
+};
 export type LogStatus = { config: LogConfig; folder: string; size: number; files: number };
 export type Autostart = { enabled: boolean; minimized: boolean; program: string };
 export type TrayConfig = { enabled: boolean; closeToTray: boolean; showUsage: boolean };
@@ -363,6 +391,9 @@ export const api = {
   processSource: (pid: number) => invoke<ProcessSource>("process_source", { pid }),
   loggingGet: () => invoke<LogStatus>("logging_get"),
   loggingSet: (config: LogConfig) => invoke<void>("logging_set", { config }),
+  logDays: () => invoke<LogDay[]>("log_days"),
+  logRead: (day: string, from: number, to: number, slices: number) =>
+    invoke<LogView>("log_read", { day, from, to, slices }),
   trayGet: () => invoke<TrayConfig>("tray_get"),
   traySet: (config: TrayConfig) => invoke<void>("tray_set", { config }),
   autostartGet: () => invoke<Autostart>("autostart_get"),

@@ -16,12 +16,54 @@ class Live {
   tick = $state(0);
   readonly settings = settings;
   private series = new Map<string, number[]>();
+  /** A copy of every series taken when the graphs were paused. */
+  private frozen = $state.raw<Map<string, number[]> | null>(null);
+  private latest: Sample | null = null;
+
+  /** The moment every graph points at, as samples before the newest; null
+   * when the pointer is off the graphs and nothing is paused. */
+  cursor = $state<number | null>(null);
+  get paused() {
+    return this.frozen != null;
+  }
 
   /** The recorded values for a key, oldest first. Reading it in a template
-   * or effect re-runs that code on every new sample. */
+   * or effect re-runs that code on every new sample. While paused it is the
+   * history as it was at the pause. */
   history(key: string): number[] {
     void this.tick;
-    return this.series.get(key) ?? [];
+    return (this.frozen ?? this.series).get(key) ?? [];
+  }
+
+  /** The clock time of a moment, `ago` samples before the newest. */
+  timeAt(ago: number): number | null {
+    const times = this.history("time");
+    const t = times[times.length - 1 - ago];
+    return t == null || !isFinite(t) ? null : t;
+  }
+
+  /** Freezes every graph, pointing at `ago` samples back (the newest if not given). */
+  pause(ago = this.cursor ?? 0) {
+    if (!this.frozen) this.frozen = new Map([...this.series].map(([k, v]) => [k, v.slice()]));
+    this.cursor = Math.max(0, Math.min(this.span() - 1, ago));
+  }
+
+  resume() {
+    this.frozen = null;
+    this.cursor = null;
+    if (this.latest) this.sample = this.latest;
+    this.tick++;
+  }
+
+  /** Moves the paused cursor; positive steps go back in time. */
+  step(by: number) {
+    if (!this.frozen) this.pause();
+    this.cursor = Math.max(0, Math.min(this.span() - 1, (this.cursor ?? 0) + by));
+  }
+
+  /** How many samples the paused history holds. */
+  private span() {
+    return (this.frozen ?? this.series).get("time")?.length ?? 1;
   }
 
   private push(key: string, value: number | null | undefined) {
@@ -36,6 +78,7 @@ class Live {
   }
 
   private record(x: Sample) {
+    this.push("time", x.time);
     this.push("cpu", x.cpu);
     x.cores.forEach((c, i) => this.push(`core:${i}`, c));
     const freqs = x.freqs.filter((f) => f > 0);
@@ -71,17 +114,16 @@ class Live {
     });
     this.info = await api.systemInfo();
     // History keeps recording while the window is hidden in the tray, but
-    // pages only redraw when it can be seen.
-    let latest: Sample | null = null;
+    // pages only redraw when it can be seen, and not while paused.
     const show = () => {
-      if (document.hidden || !latest) return;
-      this.sample = latest;
+      if (document.hidden || !this.latest || this.frozen) return;
+      this.sample = this.latest;
       this.tick++;
     };
     document.addEventListener("visibilitychange", show);
     await listen<Sample>("sample", (e) => {
       this.record(e.payload);
-      latest = e.payload;
+      this.latest = e.payload;
       show();
     });
   }

@@ -50,8 +50,26 @@
   live.start();
   updates.start();
 
+  // Paused graphs: arrows step through time, Space and Esc resume. Space
+  // also pauses. Keys typed into fields and menus are left alone.
+  function scrubKeys(e: KeyboardEvent): boolean {
+    if (e.ctrlKey || e.altKey || e.metaKey) return false;
+    const field = (e.target as HTMLElement).closest("input, textarea, select, button, [contenteditable]");
+    if (e.key === "Escape" && live.paused) live.resume();
+    else if (field) return false;
+    else if (e.key === " ") live.paused ? live.resume() : live.pause();
+    else if (live.paused && (e.key === "ArrowLeft" || e.key === "ArrowRight"))
+      live.step((e.key === "ArrowLeft" ? 1 : -1) * (e.shiftKey ? 10 : 1));
+    else return false;
+    e.preventDefault();
+    return true;
+  }
+
+  const pausedAt = $derived(live.paused && live.cursor != null ? live.timeAt(live.cursor) : null);
+
   // Ctrl+1…9 jumps between pages; Ctrl+, opens Settings.
   function onkeydown(e: KeyboardEvent) {
+    if (scrubKeys(e)) return;
     if (!e.ctrlKey || e.altKey) return;
     if (e.key === ",") {
       e.preventDefault();
@@ -104,6 +122,15 @@
 
   <main bind:this={main}>
     <UpdateBanner />
+    {#if live.paused}
+      <div class="paused" role="status">
+        <span class="mark"></span>
+        <b>Paused</b>
+        <span>Showing {pausedAt == null ? "an earlier moment" : new Date(pausedAt).toLocaleTimeString()}{live.cursor ? ` · ${live.cursor} ${live.cursor === 1 ? "sample" : "samples"} before the pause` : ""}</span>
+        <span class="faint keys">← → step · Shift+← → 10 at a time · click or drag a graph · Esc resumes</span>
+        <button class="btn" onclick={() => live.resume()}>Resume</button>
+      </div>
+    {/if}
     {#key current}
       {#if page}
         <page.component />
@@ -265,6 +292,36 @@
   .foot p {
     margin: 6px 10px 0;
     font-size: 11.5px;
+  }
+
+  .paused {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin: -26px -30px 18px;
+    padding: 9px 30px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    font-size: 13px;
+  }
+
+  .paused .mark {
+    width: 10px;
+    height: 10px;
+    border-left: 3px solid var(--accent);
+    border-right: 3px solid var(--accent);
+  }
+
+  .paused .keys {
+    font-size: 12px;
+  }
+
+  .paused button {
+    margin-left: auto;
   }
 
   main {

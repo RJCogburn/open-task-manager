@@ -138,7 +138,7 @@
           <div class="sub">{t.sub}</div>
           {#if config.graphs && t.series.length}
             <div class="graph">
-              <Chart label={t.name} series={t.series} tick={live.tick} height={50} max={t.max ?? 100} format={t.format} />
+              <Chart label={t.name} series={t.series} tick={live.tick} height={50} max={t.max ?? 100} format={t.format} scrub={false} />
             </div>
           {/if}
         {:else}

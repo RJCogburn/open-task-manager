@@ -3,16 +3,21 @@
   soft fill, a light grid, and a readout that follows the pointer. It redraws
   only when `tick` changes or the size changes, so idle pages cost nothing.
 
+  Every chart on a page points at the same moment (live.cursor). Clicking
+  one pauses them all there; the arrow keys step and Esc resumes (App.svelte).
+
   Each chart can be shown another way, chosen from the menu in its corner and
   remembered by its label: as a big number over a sparkline, as rings, or as
   segmented meters. Those show the latest value against the graph's scale.
 -->
 <script lang="ts">
   import Gauge from "./Gauge.svelte";
-  import { historyLength } from "./live.svelte";
+  import { historyLength, live } from "./live.svelte";
   import { settings, type ChartType } from "./settings.svelte";
 
   type Series = { label: string; data: number[]; color: string; fill?: boolean };
+  /** A cursor of the page's own, for graphs of recorded history rather than the live feed. */
+  export type Cursor = { ago: number | null; move(ago: number | null): void; label(ago: number): string };
 
   let {
     series,
@@ -22,6 +27,9 @@
     format = (v: number) => v.toFixed(0),
     grid = true,
     label = "Graph",
+    scrub = true,
+    slots,
+    cursor,
   }: {
     series: Series[];
     tick: number;
@@ -31,7 +39,15 @@
     format?: (v: number) => string;
     grid?: boolean;
     label?: string;
+    /** Whether pointing and clicking moves the shared cursor and pauses. */
+    scrub?: boolean;
+    /** How many values fit across; the live history length if not given. */
+    slots?: number;
+    /** Replaces the live feed's shared cursor and pausing. */
+    cursor?: Cursor;
   } = $props();
+
+  const span = () => slots ?? historyLength();
 
   const types: { id: ChartType; label: string }[] = [
     { id: "smooth", label: "Smooth" },
@@ -56,12 +72,16 @@
     for (let i = s.data.length - 1; i >= 0; i--) if (isFinite(s.data[i])) return s.data[i];
     return null;
   };
-  /** The latest value as a share of the graph's top, 0 to 1. */
-  const share = (s: Series) => Math.max(0, Math.min(1, (last(s) ?? 0) / top()));
+  /** The value at the shared cursor, or the latest one. */
+  const shown = (s: Series) => (hover != null ? valueAt(s, hover) : last(s));
+  /** The shown value as a share of the graph's top, 0 to 1. */
+  const share = (s: Series) => Math.max(0, Math.min(1, (shown(s) ?? 0) / top()));
 
   let canvas = $state<HTMLCanvasElement>();
   let width = $state(0);
-  let hover = $state<number | null>(null);
+  /** The slot the shared cursor falls on. */
+  const ago = $derived(cursor ? cursor.ago : scrub ? live.cursor : null);
+  const hover = $derived(ago != null ? span() - 1 - ago : null);
 
   // Theme colours, looked up once: asking for computed styles on every redraw
   // is the slowest part of drawing. Cleared when the theme changes.
@@ -110,8 +130,8 @@
     const sparkline = type === "number";
     // Themes can make lines glow (Neon does); most leave --chart-glow unset.
     const glow = Number(resolve("var(--chart-glow)")) || 0;
-    const slots = historyLength();
-    const step = width / (slots - 1);
+    const count = span();
+    const step = width / (count - 1);
     const y = (v: number) => pad + h - (Math.min(v, peak) / peak) * h;
 
     if (grid && look.grid && !sparkline) {
@@ -133,10 +153,16 @@
 
     for (const s of series) {
       const color = resolve(s.color);
-      const offset = slots - s.data.length;
+      const offset = count - s.data.length;
       const pts: [number, number][] = [];
+      // Runs of recorded values; a missing value ends one, so gaps stay gaps.
+      const runs: [number, number][][] = [[]];
       s.data.forEach((v, i) => {
-        if (isFinite(v)) pts.push([(offset + i) * step, y(v)]);
+        if (isFinite(v)) {
+          const p: [number, number] = [(offset + i) * step, y(v)];
+          pts.push(p);
+          runs[runs.length - 1].push(p);
+        } else if (runs[runs.length - 1].length) runs.push([]);
       });
       if (style === "bars") {
         // Several series share a slot side by side.
@@ -147,42 +173,51 @@
         for (const [x, py] of pts) ctx.fillRect(x - (step * 0.4) + k * barW, py, barW, height - py);
         continue;
       }
-      if (pts.length < 2) continue;
-      const path = new Path2D();
-      path.moveTo(pts[0][0], pts[0][1]);
-      if (style === "smooth") {
-        // Curves through midpoints: smooth, and never overshoot the data.
-        for (let i = 1; i < pts.length - 1; i++) {
-          const mx = (pts[i][0] + pts[i + 1][0]) / 2;
-          const my = (pts[i][1] + pts[i + 1][1]) / 2;
-          path.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+      for (const run of runs) {
+        if (run.length === 1) {
+          // A lone value between gaps shows as a dot.
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(run[0][0], run[0][1], look.thickness, 0, Math.PI * 2);
+          ctx.fill();
         }
-        path.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
-      } else {
-        for (let i = 1; i < pts.length; i++) {
-          if (style === "step") path.lineTo(pts[i][0], pts[i - 1][1]);
-          path.lineTo(pts[i][0], pts[i][1]);
+        if (run.length < 2) continue;
+        const path = new Path2D();
+        path.moveTo(run[0][0], run[0][1]);
+        if (style === "smooth") {
+          // Curves through midpoints: smooth, and never overshoot the data.
+          for (let i = 1; i < run.length - 1; i++) {
+            const mx = (run[i][0] + run[i + 1][0]) / 2;
+            const my = (run[i][1] + run[i + 1][1]) / 2;
+            path.quadraticCurveTo(run[i][0], run[i][1], mx, my);
+          }
+          path.lineTo(run[run.length - 1][0], run[run.length - 1][1]);
+        } else {
+          for (let i = 1; i < run.length; i++) {
+            if (style === "step") path.lineTo(run[i][0], run[i - 1][1]);
+            path.lineTo(run[i][0], run[i][1]);
+          }
         }
-      }
 
-      if (s.fill !== false && look.fill) {
-        const area = new Path2D(path);
-        area.lineTo(pts[pts.length - 1][0], height);
-        area.lineTo(pts[0][0], height);
-        area.closePath();
-        const gradient = ctx.createLinearGradient(0, 0, 0, height);
-        gradient.addColorStop(0, withAlpha(color, 0.32));
-        gradient.addColorStop(1, withAlpha(color, 0.02));
-        ctx.fillStyle = gradient;
-        ctx.fill(area);
+        if (s.fill !== false && look.fill) {
+          const area = new Path2D(path);
+          area.lineTo(run[run.length - 1][0], height);
+          area.lineTo(run[0][0], height);
+          area.closePath();
+          const gradient = ctx.createLinearGradient(0, 0, 0, height);
+          gradient.addColorStop(0, withAlpha(color, 0.32));
+          gradient.addColorStop(1, withAlpha(color, 0.02));
+          ctx.fillStyle = gradient;
+          ctx.fill(area);
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = look.thickness;
+        ctx.lineJoin = "round";
+        ctx.shadowColor = color;
+        ctx.shadowBlur = glow;
+        ctx.stroke(path);
+        ctx.shadowBlur = 0;
       }
-      ctx.strokeStyle = color;
-      ctx.lineWidth = look.thickness;
-      ctx.lineJoin = "round";
-      ctx.shadowColor = color;
-      ctx.shadowBlur = glow;
-      ctx.stroke(path);
-      ctx.shadowBlur = 0;
     }
 
     if (hover != null) {
@@ -211,15 +246,38 @@
   }
 
   function valueAt(s: Series, slot: number): number | null {
-    const v = s.data[slot - (historyLength() - s.data.length)];
+    const v = s.data[slot - (span() - s.data.length)];
     return v != null && isFinite(v) ? v : null;
   }
 
+  /** How many samples back the pointer is. */
+  function agoAt(e: PointerEvent): number {
+    const r = canvas!.getBoundingClientRect();
+    const last = span() - 1;
+    return last - Math.max(0, Math.min(last, Math.round(((e.clientX - r.left) / r.width) * last)));
+  }
+
+  // Live, the cursor follows the pointer. Paused, it stays put unless dragged.
   function onmove(e: PointerEvent) {
-    if (!canvas) return;
-    const r = canvas.getBoundingClientRect();
-    const last = historyLength() - 1;
-    hover = Math.max(0, Math.min(last, Math.round(((e.clientX - r.left) / r.width) * last)));
+    if (cursor && canvas) cursor.move(agoAt(e));
+    if (cursor || !scrub || !canvas) return;
+    if (!live.paused) live.cursor = agoAt(e);
+    else if (e.buttons & 1) live.pause(agoAt(e));
+  }
+
+  function ondown(e: PointerEvent) {
+    if (cursor || !scrub || !canvas || e.button !== 0) return;
+    live.pause(agoAt(e));
+  }
+
+  function onleave() {
+    if (cursor) cursor.move(null);
+    else if (scrub && !live.paused) live.cursor = null;
+  }
+
+  function clock(ago: number): string {
+    const t = live.timeAt(ago);
+    return t == null ? `${ago} samples ago` : new Date(t).toLocaleTimeString();
   }
 
   $effect(() => {
@@ -247,7 +305,6 @@
     void tick;
     return series.map((s) => `${s.label} ${format(s.data[s.data.length - 1] ?? 0)}`).join(", ");
   });
-  const ago = $derived(hover == null ? 0 : historyLength() - 1 - hover);
 </script>
 
 <div class="chart" bind:clientWidth={width} style:height="{height}px" role="img" aria-label="{label}: {latest}">
@@ -258,20 +315,21 @@
       style:height="{height}px"
       aria-hidden="true"
       onpointermove={onmove}
-      onpointerleave={() => (hover = null)}
+      onpointerdown={ondown}
+      onpointerleave={onleave}
     ></canvas>
   {/if}
   {#if type === "number"}
     <div class="readout" style:font-size="{Math.max(16, Math.min(34, height * 0.32))}px" aria-hidden="true">
       {#each series as s (s.label)}
-        {@const v = last(s)}
+        {@const v = shown(s)}
         <span style:color={s.color}>{#if series.length > 1}<small>{s.label}</small>{/if}{v == null ? "—" : format(v)}</span>
       {/each}
     </div>
   {:else if type === "ring"}
     <div class="rings" aria-hidden="true">
       {#each series as s (s.label)}
-        {@const v = last(s)}
+        {@const v = shown(s)}
         <div class="ring">
           <Gauge value={share(s) * 100} color={s.color} size={Math.max(48, Math.min(120, height - (series.length > 1 ? 30 : 14)))}
             label={s.label} text={v == null ? "—" : format(v)} />
@@ -282,7 +340,7 @@
   {:else if type === "meter"}
     <div class="meters" aria-hidden="true">
       {#each series as s (s.label)}
-        {@const v = last(s)}
+        {@const v = shown(s)}
         {@const lit = Math.round(share(s) * SEGMENTS)}
         <div class="meter">
           <div class="meter-head"><small>{s.label}</small><b style:color={s.color}>{v == null ? "—" : format(v)}</b></div>
@@ -303,8 +361,12 @@
     {/each}
   </select>
   {#if hover != null && drawn}
-    <div class="tip" class:left={hover > historyLength() / 2}>
-      <div class="faint">{ago === 0 ? "now" : `${ago} samples ago`}</div>
+    <div class="tip" class:left={hover > span() / 2}>
+      <div class="faint">
+        {#if cursor}{cursor.label(ago ?? 0)}{:else}
+          {ago === 0 && !live.paused ? "now" : clock(ago ?? 0)}{#if live.paused} · paused{:else} · click to pause{/if}
+        {/if}
+      </div>
       {#each series as s (s.label)}
         {@const v = valueAt(s, hover)}
         <div class="line"><i style:background={s.color}></i>{s.label}<b>{v == null ? "—" : format(v)}</b></div>

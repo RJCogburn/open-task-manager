@@ -142,6 +142,8 @@ pub fn run() {
             sampler::set_interval,
             logging::logging_get,
             logging::logging_set,
+            logging::log_days,
+            logging::log_read,
             startup::autostart_get,
             startup::autostart_set,
             tray::tray_get,

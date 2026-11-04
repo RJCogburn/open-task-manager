@@ -287,3 +287,298 @@ pub fn logging_set(state: State<'_, AppState>, config: LogConfig) -> Result<(), 
     *state.logger.last.lock().unwrap() = None;
     Ok(())
 }
+
+// Reading the logs back for the History page.
+
+/// The kinds of log, in the order the History page shows them.
+const KINDS: [&str; 6] = ["cpu", "memory", "disks", "network", "gpu", "temperatures"];
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogDay {
+    day: String,
+    kinds: Vec<String>,
+    size: u64,
+}
+
+/// The days with logs, newest first.
+#[tauri::command]
+pub fn log_days() -> Vec<LogDay> {
+    let mut days: Vec<LogDay> = Vec::new();
+    for entry in fs::read_dir(log_dir()).into_iter().flatten().flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Some((kind, day)) = name.strip_suffix(".csv").and_then(split_name) else { continue };
+        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+        match days.iter_mut().find(|d| d.day == day) {
+            Some(d) => {
+                d.kinds.push(kind.to_string());
+                d.size += size;
+            }
+            None => days.push(LogDay { day: day.to_string(), kinds: vec![kind.to_string()], size }),
+        }
+    }
+    for d in &mut days {
+        d.kinds.sort_by_key(|k| KINDS.iter().position(|x| x == k));
+    }
+    days.sort_by(|a, b| b.day.cmp(&a.day));
+    days
+}
+
+/// "cpu-2026-11-01" into ("cpu", "2026-11-01"), for the kinds this app writes.
+fn split_name(name: &str) -> Option<(&str, &str)> {
+    let cut = name.len().checked_sub(10)?;
+    let (kind, day) = (name.get(..cut)?, name.get(cut..)?);
+    let kind = kind.strip_suffix('-')?;
+    (KINDS.contains(&kind) && valid_day(day)).then_some((kind, day))
+}
+
+fn valid_day(day: &str) -> bool {
+    day.len() == 10 && day.char_indices().all(|(i, c)| if i == 4 || i == 7 { c == '-' } else { c.is_ascii_digit() })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogSeries {
+    label: String,
+    /// The average in each slice of the window; null where nothing was recorded.
+    values: Vec<Option<f64>>,
+    avg: Option<f64>,
+    max: Option<f64>,
+    /// When the peak was, in seconds after midnight.
+    max_at: Option<u32>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogGroup {
+    id: String,
+    title: String,
+    /// "percent", "mhz", "load", "bytes", "celsius" or "watts".
+    unit: String,
+    series: Vec<LogSeries>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogView {
+    day: String,
+    /// The window, in seconds after midnight.
+    from: u32,
+    to: u32,
+    /// Seconds each value covers.
+    slice: u32,
+    /// Seconds between recorded rows.
+    every: Option<u32>,
+    rows: usize,
+    groups: Vec<LogGroup>,
+}
+
+/// One recorded value: which chart and line it belongs to, and when.
+struct Point {
+    group: usize,
+    label: String,
+    secs: u32,
+    value: f64,
+}
+
+/// The charts, as (id, title, unit), in the order shown.
+const GROUPS: [(&str, &str, &str); 10] = [
+    ("cpu", "Processor usage", "percent"),
+    ("freq", "Processor speed", "mhz"),
+    ("load", "Load average (1 minute)", "load"),
+    ("memory", "Memory and swap in use", "percent"),
+    ("disk-io", "Disk transfer", "bytes"),
+    ("disk-busy", "Disk busy", "percent"),
+    ("network", "Network", "bytes"),
+    ("gpu", "Graphics usage", "percent"),
+    ("gpu-power", "Graphics power", "watts"),
+    ("temps", "Temperatures", "celsius"),
+];
+
+fn group(id: &str) -> usize {
+    GROUPS.iter().position(|g| g.0 == id).unwrap_or(0)
+}
+
+/// Reads one day's logs into charts covering `from` to `to` seconds after
+/// midnight, in at most `slices` values per line.
+#[tauri::command]
+pub fn log_read(day: String, from: u32, to: u32, slices: u32) -> Result<LogView, String> {
+    if !valid_day(&day) {
+        return Err("Not a day".into());
+    }
+    let to = to.clamp(1, 86_400);
+    let from = from.min(to - 1);
+    let dir = log_dir();
+    let mut points = Vec::new();
+    let mut times: Vec<u32> = Vec::new();
+    for kind in KINDS {
+        let Ok(text) = fs::read_to_string(dir.join(format!("{kind}-{day}.csv"))) else { continue };
+        let before = points.len();
+        parse(kind, &text, &mut points);
+        if times.is_empty() && points.len() > before {
+            times = points[before..].iter().map(|p| p.secs).collect();
+            times.dedup();
+        }
+    }
+    if points.is_empty() {
+        return Err(format!("Nothing was recorded on {day}."));
+    }
+    let every = spacing(&times);
+    // Each slice covers at least two rows, so a slice is never empty while recording ran.
+    let span = to - from;
+    let n = slices.clamp(1, 2000).min((span / (every.unwrap_or(1).max(1) * 2)).max(1));
+    let slice = span.div_ceil(n);
+    let rows = times.iter().filter(|&&t| t >= from && t < to).count();
+    Ok(LogView { day, from, to, slice, every, rows, groups: collect(points, from, to, n, slice) })
+}
+
+/// The usual gap between rows: the median, so pauses don't count.
+fn spacing(times: &[u32]) -> Option<u32> {
+    let mut gaps: Vec<u32> = times.windows(2).map(|w| w[1].saturating_sub(w[0])).filter(|&g| g > 0).collect();
+    gaps.sort_unstable();
+    gaps.get(gaps.len() / 2).copied()
+}
+
+fn collect(points: Vec<Point>, from: u32, to: u32, n: u32, slice: u32) -> Vec<LogGroup> {
+    struct Acc {
+        sums: Vec<(f64, u32)>,
+        total: f64,
+        count: u32,
+        max: Option<(f64, u32)>,
+    }
+    let mut lines: Vec<(usize, String, Acc)> = Vec::new();
+    for p in points {
+        if p.secs < from || p.secs >= to || !p.value.is_finite() {
+            continue;
+        }
+        let i = match lines.iter().position(|l| l.0 == p.group && l.1 == p.label) {
+            Some(i) => i,
+            None => {
+                let acc = Acc { sums: vec![(0.0, 0); n as usize], total: 0.0, count: 0, max: None };
+                lines.push((p.group, p.label, acc));
+                lines.len() - 1
+            }
+        };
+        let acc = &mut lines[i].2;
+        let s = &mut acc.sums[((p.secs - from) / slice).min(n - 1) as usize];
+        s.0 += p.value;
+        s.1 += 1;
+        acc.total += p.value;
+        acc.count += 1;
+        if acc.max.is_none_or(|(m, _)| p.value > m) {
+            acc.max = Some((p.value, p.secs));
+        }
+    }
+    let mut groups: Vec<LogGroup> = Vec::new();
+    for (g, (id, title, unit)) in GROUPS.iter().enumerate() {
+        let series: Vec<LogSeries> = lines
+            .iter()
+            .filter(|l| l.0 == g)
+            // Lines that stayed at zero (an idle network link, an unused disk) are left out.
+            .filter(|l| l.2.max.is_some_and(|(m, _)| m > 0.0))
+            .map(|(_, label, a)| LogSeries {
+                label: label.clone(),
+                values: a.sums.iter().map(|&(sum, c)| (c > 0).then(|| sum / c as f64)).collect(),
+                avg: (a.count > 0).then(|| a.total / a.count as f64),
+                max: a.max.map(|m| m.0),
+                max_at: a.max.map(|m| m.1),
+            })
+            .collect();
+        if !series.is_empty() {
+            groups.push(LogGroup { id: id.to_string(), title: title.to_string(), unit: unit.to_string(), series });
+        }
+    }
+    groups
+}
+
+/// "2026-11-01 14:03:05" into seconds after midnight.
+fn seconds(time: &str) -> Option<u32> {
+    let clock = time.get(11..19)?;
+    let mut parts = clock.split(':').map(|p| p.parse::<u32>().ok());
+    let (h, m, s) = (parts.next()??, parts.next()??, parts.next()??);
+    (h < 24 && m < 60 && s < 61).then_some(h * 3600 + m * 60 + s.min(59))
+}
+
+/// Turns one log file into points. Columns are found by name, so files from
+/// older versions with fewer columns still read.
+fn parse(kind: &str, text: &str, out: &mut Vec<Point>) {
+    let mut lines = text.lines();
+    let Some(header) = lines.next() else { return };
+    let cols: Vec<&str> = header.split(',').collect();
+    let at = |name: &str| cols.iter().position(|c| *c == name);
+    for line in lines {
+        let f: Vec<&str> = line.split(',').collect();
+        let Some(secs) = f.first().and_then(|t| seconds(t)) else { continue };
+        let num = |name: &str| at(name).and_then(|i| f.get(i)).and_then(|v| v.parse::<f64>().ok());
+        let name = |name: &str| at(name).and_then(|i| f.get(i)).map(|v| v.to_string()).unwrap_or_default();
+        let mut add = |g: &str, label: String, value: Option<f64>| {
+            if let Some(value) = value {
+                out.push(Point { group: group(g), label, secs, value });
+            }
+        };
+        match kind {
+            "cpu" => {
+                add("cpu", "CPU".into(), num("usage_percent"));
+                add("freq", "Average".into(), num("avg_mhz").filter(|&v| v > 0.0));
+                add("load", "Load".into(), num("load_1m"));
+            }
+            "memory" => {
+                let share = |used: Option<f64>, total: Option<f64>| {
+                    used.zip(total).filter(|(_, t)| *t > 0.0).map(|(u, t)| u / t * 100.0)
+                };
+                add("memory", "Memory".into(), share(num("used_bytes"), num("total_bytes")));
+                add("memory", "Swap".into(), share(num("swap_used_bytes"), num("swap_total_bytes")));
+            }
+            "disks" => {
+                let disk = name("disk");
+                add("disk-io", format!("{disk} read"), num("read_bytes_per_s"));
+                add("disk-io", format!("{disk} write"), num("write_bytes_per_s"));
+                add("disk-busy", disk, num("busy_percent"));
+            }
+            "network" => {
+                let link = name("interface");
+                add("network", format!("{link} download"), num("download_bytes_per_s"));
+                add("network", format!("{link} upload"), num("upload_bytes_per_s"));
+            }
+            "gpu" => {
+                let gpu = name("gpu");
+                add("gpu", gpu.clone(), num("usage_percent"));
+                add("gpu-power", gpu, num("power_w"));
+            }
+            "temperatures" => add("temps", name("sensor"), num("celsius")),
+            _ => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn names_and_days() {
+        assert_eq!(split_name("cpu-2026-11-01"), Some(("cpu", "2026-11-01")));
+        assert_eq!(split_name("temperatures-2026-11-01"), Some(("temperatures", "2026-11-01")));
+        assert_eq!(split_name("other-2026-11-01"), None);
+        assert_eq!(split_name("cpu-2026-11-é1"), None);
+        assert!(!valid_day("../../etc/x"));
+        assert_eq!(seconds("2026-11-01 14:03:05"), Some(14 * 3600 + 3 * 60 + 5));
+    }
+
+    #[test]
+    fn reads_and_slices() {
+        let mut points = Vec::new();
+        let text = "time,usage_percent,avg_mhz,load_1m\n\
+                    2026-11-01 00:00:00,10,3000,1\n\
+                    2026-11-01 00:00:10,30,3000,1\n\
+                    2026-11-01 00:00:20,50,3000,1\n\
+                    2026-11-01 00:00:30,70,3000,1\n";
+        parse("cpu", text, &mut points);
+        let groups = collect(points, 0, 40, 2, 20);
+        let cpu = &groups[0].series[0];
+        assert_eq!(cpu.values, vec![Some(20.0), Some(60.0)]);
+        assert_eq!(cpu.avg, Some(40.0));
+        assert_eq!((cpu.max, cpu.max_at), (Some(70.0), Some(30)));
+        assert_eq!(spacing(&[0, 10, 20, 500, 510]), Some(10));
+    }
+}
