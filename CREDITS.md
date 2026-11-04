@@ -28,6 +28,7 @@ not copied into it, so their licenses apply to them, not to this app.
 | [systemd](https://systemd.io/) | Failed services and start-up times for the slowdown check (`systemctl`, `systemd-analyze`) | LGPL-2.1-or-later |
 | [power-profiles-daemon](https://gitlab.freedesktop.org/upower/power-profiles-daemon) | The current power profile for the slowdown check (`powerprofilesctl`), only if installed | GPL-3.0-or-later |
 | [nvme-cli](https://github.com/linux-nvme/nvme-cli) | Installing Western Digital firmware on NVMe drives (`nvme fw-download`, `fw-commit`), only if you do | GPL-2.0-or-later |
+| [Lynis](https://github.com/CISOfy/lynis) | The security audit (`lynis audit system`), only if installed | GPL-3.0-only |
 | [fwupd](https://fwupd.org/) | Drive firmware versions and updates from the LVFS (`fwupdmgr`) | LGPL-2.1-or-later |
 | [Speedtest CLI by Ookla](https://www.speedtest.net/apps/cli) | Internet speed test against speedtest.net servers (`speedtest`), only if you install it | Proprietary (not open source) |
 | [NVIDIA System Management Interface](https://developer.nvidia.com/system-management-interface) | NVIDIA GPU readings (`nvidia-smi`), only if the NVIDIA driver is installed | Proprietary (not open source) |

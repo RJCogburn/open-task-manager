@@ -152,6 +152,14 @@ export const credits = {
     group: "runs",
     program: "nvme",
   },
+  lynis: {
+    name: "Lynis",
+    role: "The security audit (lynis audit system). Used only if installed.",
+    license: "GPL-3.0-only",
+    url: "https://github.com/CISOfy/lynis",
+    group: "runs",
+    program: "lynis",
+  },
   fwupd: {
     name: "fwupd",
     role: "Drive firmware versions and updates from the LVFS (fwupdmgr)",

@@ -228,6 +228,50 @@ export type SlowdownAction = {
 export type Pressure = { cpu: number; memory: number; io: number };
 export type SlowdownReport = { checks: SlowdownCheck[]; pressure: Pressure | null };
 
+export type AuditFinding = {
+  /** Lynis's test id, such as "SSH-7408". */
+  test: string;
+  text: string;
+  details: string | null;
+  solution: string | null;
+  /** Advice mostly meant for servers rather than a desktop. */
+  server: boolean;
+  /** A short tag and a sentence on what the finding means on this computer. */
+  note?: string | null;
+  noteText?: string | null;
+  /** Lynis's own description of the check, from its source. */
+  about?: { description: string; notes: string | null; url: string | null } | null;
+  /** What Lynis found behind the finding. */
+  found?: string[];
+  /** Why it's best left as it is, where it is. */
+  advice?: string | null;
+  actions?: AuditAction[];
+};
+export type AuditAction = {
+  fix: string;
+  target: string | null;
+  label: string;
+  explain: string;
+  command: string;
+  admin: boolean;
+  /** Only looks; changes nothing. */
+  readOnly: boolean;
+};
+/** A change made from the Security audit page, which can be undone. */
+export type AuditChange = { fix: string; target: string | null; label: string; time: number };
+export type Audit = {
+  time: number;
+  admin: boolean;
+  version: string | null;
+  /** Lynis's hardening index, 0 to 100. */
+  score: number | null;
+  tests: number | null;
+  warnings: AuditFinding[];
+  suggestions: AuditFinding[];
+};
+/** The last audit, and earlier scores as [time, admin, score], oldest first. */
+export type SavedAudits = { last: Audit | null; scores: [number, boolean, number][] };
+
 export type App = {
   name: string;
   version: string;
@@ -359,6 +403,13 @@ export const api = {
   firmwareUpdate: (deviceId: string) => invoke<string>("firmware_update", { deviceId }),
   wdFirmwareCheck: (device: string) => invoke<WdCheck>("wd_firmware_check", { device }),
   wdFirmwareInstall: (device: string, version: string) => invoke<string>("wd_firmware_install", { device, version }),
+  securityAudit: (admin: boolean) => invoke<Audit>("security_audit", { admin }),
+  securityCancel: () => invoke<void>("security_cancel"),
+  securityLast: () => invoke<SavedAudits>("security_last"),
+  securityFix: (fix: string, target: string | null) =>
+    invoke<{ message: string; output: string | null }>("security_fix", { fix, target }),
+  securityUndo: (index: number) => invoke<string>("security_undo", { index }),
+  securityChanges: () => invoke<AuditChange[]>("security_changes"),
   slowdownFix: (fix: string, target: string | null) => invoke<string>("slowdown_fix", { fix, target }),
   processes: () => invoke<Proc[]>("processes"),
   endProcess: (pid: number, force: boolean) => invoke<void>("end_process", { pid, force }),
@@ -378,6 +429,8 @@ export const api = {
   benchNetwork: (provider: SpeedProvider) => invoke<NetScore>("bench_network", { provider }),
   installedApps: () => invoke<AppList>("installed_apps"),
   /** Whether each program a credit names is installed. */
+  /** Installs a tool's package; asks for the password. */
+  installTool: (program: string) => invoke<void>("install_tool", { program }),
   toolStatus: () => invoke<ToolStatus[]>("tool_status", { programs }),
   openFolder: (path: string) => invoke<void>("open_folder", { path }),
   updateLocal: () => invoke<UpdateStatus>("update_local"),

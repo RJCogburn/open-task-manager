@@ -10,7 +10,7 @@ license = "GPL-3.0-or-later"
 # `cargo build --release --no-default-features --features processes,disks`.
 # CPU, Memory, GPU and Overview need no feature: the live sampler feeds them.
 [features]
-default = ["benchmarks", "connections", "disk-space", "disks", "installed-apps", "network", "processes", "sensors", "slowdown"]
+default = ["benchmarks", "connections", "disk-space", "disks", "installed-apps", "network", "processes", "security-audit", "sensors", "slowdown"]
 benchmarks = []
 connections = []
 disk-space = []
@@ -18,6 +18,7 @@ disks = []
 installed-apps = []
 network = []
 processes = []
+security-audit = []
 sensors = []
 slowdown = []
 

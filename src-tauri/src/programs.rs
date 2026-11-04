@@ -27,21 +27,45 @@ pub fn missing(program: &str) -> String {
     }
 }
 
-/// The package that provides each tool, for the package manager on this system.
-fn install_hint(program: &str) -> Option<String> {
-    let package = |arch: &str, debian: &str, fedora: &str, suse: &str| {
-        if which("pacman").is_some() {
-            Some(format!("sudo pacman -S {arch}"))
-        } else if which("apt").is_some() {
-            Some(format!("sudo apt install {debian}"))
-        } else if which("zypper").is_some() {
-            Some(format!("sudo zypper install {suse}"))
-        } else if which("dnf").is_some() {
-            Some(format!("sudo dnf install {fedora}"))
-        } else {
-            None
-        }
+/// The package that provides each tool, by distribution: Arch, Debian,
+/// Fedora, openSUSE.
+fn package(program: &str) -> Option<[&'static str; 4]> {
+    Some(match program {
+        "sensors" => ["lm_sensors", "lm-sensors", "lm_sensors", "sensors"],
+        "ss" => ["iproute2", "iproute2", "iproute", "iproute2"],
+        "fio" => ["fio"; 4],
+        "glmark2" => ["glmark2"; 4],
+        "curl" => ["curl"; 4],
+        "nvme" => ["nvme-cli"; 4],
+        "lynis" => ["lynis"; 4],
+        "lspci" => ["pciutils"; 4],
+        "pkexec" => ["polkit", "pkexec", "polkit", "polkit"],
+        "smartctl" => ["smartmontools"; 4],
+        "lsblk" => ["util-linux"; 4],
+        "xdg-open" => ["xdg-utils"; 4],
+        _ => return None,
+    })
+}
+
+/// The command that installs a tool's package without further questions,
+/// with this system's package manager.
+fn install_command(program: &str) -> Option<Vec<String>> {
+    let [arch, debian, fedora, suse] = package(program)?;
+    let words: &[&str] = if which("pacman").is_some() {
+        &["pacman", "-S", "--needed", "--noconfirm", arch]
+    } else if which("apt-get").is_some() {
+        &["apt-get", "install", "-y", debian]
+    } else if which("zypper").is_some() {
+        &["zypper", "--non-interactive", "install", suse]
+    } else if which("dnf").is_some() {
+        &["dnf", "install", "-y", fedora]
+    } else {
+        return None;
     };
+    Some(words.iter().map(|w| w.to_string()).collect())
+}
+
+fn install_hint(program: &str) -> Option<String> {
     if program == "speedtest" {
         // Ookla ships it themselves rather than through distribution repositories.
         return Some(if which("pacman").is_some() {
@@ -50,20 +74,31 @@ fn install_hint(program: &str) -> Option<String> {
             "the instructions at https://www.speedtest.net/apps/cli".into()
         });
     }
-    match program {
-        "sensors" => package("lm_sensors", "lm-sensors", "lm_sensors", "sensors"),
-        "ss" => package("iproute2", "iproute2", "iproute", "iproute2"),
-        "fio" => package("fio", "fio", "fio", "fio"),
-        "glmark2" => package("glmark2", "glmark2", "glmark2", "glmark2"),
-        "curl" => package("curl", "curl", "curl", "curl"),
-        "nvme" => package("nvme-cli", "nvme-cli", "nvme-cli", "nvme-cli"),
-        "lspci" => package("pciutils", "pciutils", "pciutils", "pciutils"),
-        "pkexec" => package("polkit", "pkexec", "polkit", "polkit"),
-        "smartctl" => package("smartmontools", "smartmontools", "smartmontools", "smartmontools"),
-        "lsblk" => package("util-linux", "util-linux", "util-linux", "util-linux"),
-        "xdg-open" => package("xdg-utils", "xdg-utils", "xdg-utils", "xdg-utils"),
-        _ => None,
-    }
+    install_command(program).map(|c| format!("sudo {}", c.join(" ")))
+}
+
+/// Installs a tool's package through polkit, which asks for the password.
+/// Only the packages listed in `package` can be installed this way.
+#[tauri::command]
+pub async fn install_tool(program: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(command) = install_command(&program) else {
+            return Err(format!("Open Task Manager can't install {program} on this system."));
+        };
+        let args: Vec<&str> = command.iter().map(String::as_str).collect();
+        let out = run("pkexec", &args)?;
+        if out.status.code() == Some(126) {
+            return Err("Cancelled.".into());
+        }
+        if !out.status.success() || which(&program).is_none() {
+            let text = String::from_utf8_lossy(&out.stderr);
+            let why = text.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("the package manager gave no reason");
+            return Err(format!("Installing {program} didn't work: {why}"));
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[derive(Serialize)]

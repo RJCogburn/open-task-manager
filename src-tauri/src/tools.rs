@@ -23,6 +23,10 @@ pub mod installed_apps;
 pub mod network;
 #[cfg(feature = "processes")]
 pub mod processes;
+#[cfg(feature = "security-audit")]
+pub mod security;
+#[cfg(feature = "security-audit")]
+pub mod security_fix;
 #[cfg(feature = "sensors")]
 pub mod sensors;
 #[cfg(feature = "slowdown")]
@@ -41,6 +45,7 @@ pub fn missing_tools() -> Vec<&'static str> {
         ("network", cfg!(feature = "network")),
         ("processes", cfg!(feature = "processes")),
         ("sensors", cfg!(feature = "sensors")),
+        ("security", cfg!(feature = "security-audit")),
         ("slowdown", cfg!(feature = "slowdown")),
     ]
     .into_iter()

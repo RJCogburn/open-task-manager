@@ -149,6 +149,7 @@ pub fn run() {
             tray::tray_get,
             tray::tray_set,
             programs::tool_status,
+            programs::install_tool,
             programs::open_folder,
             updates::update_local,
             updates::update_check,
@@ -208,6 +209,18 @@ pub fn run() {
             tools::processes::admin_action,
             #[cfg(feature = "sensors")]
             tools::sensors::sensors,
+            #[cfg(feature = "security-audit")]
+            tools::security::security_audit,
+            #[cfg(feature = "security-audit")]
+            tools::security::security_cancel,
+            #[cfg(feature = "security-audit")]
+            tools::security::security_last,
+            #[cfg(feature = "security-audit")]
+            tools::security_fix::security_fix,
+            #[cfg(feature = "security-audit")]
+            tools::security_fix::security_undo,
+            #[cfg(feature = "security-audit")]
+            tools::security_fix::security_changes,
             #[cfg(feature = "slowdown")]
             tools::slowdown::slowdown_check,
             #[cfg(feature = "slowdown")]
