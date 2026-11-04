@@ -136,6 +136,20 @@ app, build packages and run all the checks (Ctrl+Shift+B).
 
 To add a tool of your own, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Smaller builds
+
+Every tool with a Rust side can be left out of a build: `benchmarks`,
+`connections`, `disk-space`, `disks`, `installed-apps`, `network`, `processes`
+and `sensors`. CPU, Memory, GPU and Overview are always in. Name the tools to
+keep, and the pages of the rest are left out too:
+
+```sh
+npm run tauri build -- --features processes,disks,sensors -- --no-default-features
+```
+
+Packagers can use this to drop tools that rely on programs their distribution
+doesn't ship. Users of a full build can switch pages off in Settings instead.
+
 ### Making a release
 
 1. Set the new version in `package.json`, `src-tauri/Cargo.toml` and

@@ -92,8 +92,14 @@ $effect.root(() => {
   $effect(() => localStorage.setItem(KEY, JSON.stringify(settings)));
 });
 
+/** Tools this build of the app was made without (see Cargo.toml's features). */
+export const build = $state({ missing: [] as string[] });
+
+/** Whether a tool is in this build. */
+export const toolBuilt = (id: string) => !build.missing.includes(id);
+
 /** Whether a tool is switched on. Overview can't be switched off: it's where the app falls back to. */
-export const toolOn = (id: string) => id === "overview" || !settings.disabledTools.includes(id);
+export const toolOn = (id: string) => id === "overview" || (toolBuilt(id) && !settings.disabledTools.includes(id));
 
 export function setToolOn(id: string, on: boolean) {
   const rest = settings.disabledTools.filter((t) => t !== id);

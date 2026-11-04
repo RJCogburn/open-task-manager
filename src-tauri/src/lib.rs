@@ -20,13 +20,17 @@ pub struct AppState {
     shared: Arc<Mutex<sampler::Shared>>,
     interval_ms: Arc<AtomicU64>,
     disabled_tools: sampler::DisabledTools,
+    #[cfg(feature = "disk-space")]
     scan: Arc<tools::disk_space::ScanState>,
+    #[cfg(feature = "disks")]
     health: Arc<tools::disks::HealthCache>,
+    #[cfg(feature = "network")]
     net: Arc<tools::network::NetState>,
     logger: Arc<logging::Logger>,
     tray: Arc<tray::Tray>,
     updates: updates::Updates,
     widgets: Arc<widgets::Widgets>,
+    #[cfg(feature = "sensors")]
     rapl: tools::sensors::RaplState,
 }
 
@@ -60,13 +64,17 @@ pub fn run() {
         shared: shared.clone(),
         interval_ms: interval_ms.clone(),
         disabled_tools: disabled_tools.clone(),
+        #[cfg(feature = "disk-space")]
         scan: Arc::default(),
+        #[cfg(feature = "disks")]
         health: Arc::default(),
+        #[cfg(feature = "network")]
         net: Arc::default(),
         logger: logger.clone(),
         tray: tray.clone(),
         updates: updates::Updates::default(),
         widgets: widgets.clone(),
+        #[cfg(feature = "sensors")]
         rapl: tools::sensors::RaplState::default(),
     };
     tauri::Builder::default()
@@ -130,6 +138,7 @@ pub fn run() {
             sampler::system_info,
             sampler::mounts,
             sampler::set_disabled_tools,
+            tools::missing_tools,
             sampler::set_interval,
             logging::logging_get,
             logging::logging_set,
@@ -147,25 +156,45 @@ pub fn run() {
             widgets::widgets_set,
             widgets::show_main,
             // Tools: one group per file in tools/
+            #[cfg(feature = "benchmarks")]
             tools::benchmarks::bench_cpu,
+            #[cfg(feature = "benchmarks")]
             tools::benchmarks::bench_memory,
+            #[cfg(feature = "benchmarks")]
             tools::benchmarks::bench_disk,
+            #[cfg(feature = "benchmarks")]
             tools::benchmarks::bench_gpu,
+            #[cfg(feature = "benchmarks")]
             tools::benchmarks::bench_network,
+            #[cfg(feature = "connections")]
             tools::connections::connections,
+            #[cfg(feature = "disk-space")]
             tools::disk_space::scan_start,
+            #[cfg(feature = "disk-space")]
             tools::disk_space::scan_cancel,
+            #[cfg(feature = "disk-space")]
             tools::disk_space::scan_folder,
+            #[cfg(feature = "disk-space")]
             tools::disk_space::scan_summary,
+            #[cfg(feature = "disks")]
             tools::disks::drives,
+            #[cfg(feature = "disks")]
             tools::disks::drive_health_admin,
+            #[cfg(feature = "installed-apps")]
             tools::installed_apps::installed_apps,
+            #[cfg(feature = "network")]
             tools::network::net_activity,
+            #[cfg(feature = "network")]
             tools::network::process_source,
+            #[cfg(feature = "processes")]
             tools::processes::processes,
+            #[cfg(feature = "processes")]
             tools::processes::end_process,
+            #[cfg(feature = "processes")]
             tools::processes::set_priority,
+            #[cfg(feature = "processes")]
             tools::processes::admin_action,
+            #[cfg(feature = "sensors")]
             tools::sensors::sensors,
         ])
         .run(tauri::generate_context!())

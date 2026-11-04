@@ -5,7 +5,7 @@
 import { untrack } from "svelte";
 import { listen } from "@tauri-apps/api/event";
 import { api, type Sample, type SystemInfo } from "./api";
-import { settings, type Settings } from "./settings.svelte";
+import { build, settings, type Settings } from "./settings.svelte";
 
 /** How many samples each graph keeps; set on the Settings page. */
 export const historyLength = () => settings.chart.history;
@@ -64,9 +64,10 @@ class Live {
   async start() {
     this.applyTheme();
     await api.setInterval(this.settings.intervalMs);
+    build.missing = await api.missingTools();
     // The sampler skips readings only switched-off pages would use.
     $effect.root(() => {
-      $effect(() => void api.setDisabledTools([...this.settings.disabledTools]));
+      $effect(() => void api.setDisabledTools([...this.settings.disabledTools, ...build.missing]));
     });
     this.info = await api.systemInfo();
     // History keeps recording while the window is hidden in the tray, but

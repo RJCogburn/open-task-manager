@@ -58,6 +58,7 @@ impl Shared {
     /// pause it reads twice, a moment apart, so CPU use is current rather than
     /// averaged over the pause. Called with the lock held; it may release and
     /// take it again.
+    #[cfg(feature = "processes")]
     pub fn want_processes(shared: &Mutex<Shared>) {
         let mut s = shared.lock().unwrap();
         s.process_demand = Some(Instant::now());

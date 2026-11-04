@@ -3,6 +3,7 @@
 
 use serde::Serialize;
 
+#[cfg(feature = "connections")]
 use crate::programs;
 
 #[derive(Serialize)]
@@ -21,6 +22,8 @@ pub struct Connection {
     pub(crate) exposure: &'static str,
 }
 
+// Network uses this module's parsing without the page's own command.
+#[cfg(feature = "connections")]
 #[tauri::command]
 pub async fn connections() -> Result<Vec<Connection>, String> {
     tauri::async_runtime::spawn_blocking(|| {

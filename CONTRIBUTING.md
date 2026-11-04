@@ -63,9 +63,15 @@ If the page needs data the live sample doesn't have:
 2. Add `pub mod <your_tool>;` to `src-tauri/src/tools.rs`, and your commands
    to the tools part of the `generate_handler!` list in `src-tauri/src/lib.rs`.
    Tauri needs every command in that one list.
-3. If the tool keeps state between calls, add a field to `AppState` in
-   `lib.rs`.
-4. Add a typed wrapper for each command to `api` in `src/lib/api.ts`.
+3. Give the tool a Cargo feature so it can be left out of a build: add it to
+   `[features]` and `default` in `src-tauri/Cargo.toml`, put
+   `#[cfg(feature = "<your-tool>")]` on its `mod` line and on each of its
+   commands in `lib.rs`, and add it to `missing_tools` in `tools.rs`. Check
+   that it builds alone:
+   `cargo clippy --no-default-features --features <your-tool>`.
+4. If the tool keeps state between calls, add a field to `AppState` in
+   `lib.rs`, behind the same feature.
+5. Add a typed wrapper for each command to `api` in `src/lib/api.ts`.
 
 ### 3. Programs it runs
 

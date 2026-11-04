@@ -6,7 +6,7 @@
   import { benchmarks } from "$lib/benchmarks.svelte";
   import { bytes, pct } from "$lib/format";
   import { live } from "$lib/live.svelte";
-  import { defaults, resetSettings, setToolOn, settings, toolOn, type ChartStyle } from "$lib/settings.svelte";
+  import { defaults, resetSettings, setToolOn, settings, toolBuilt, toolOn, type ChartStyle } from "$lib/settings.svelte";
   import { tools } from "../../tools/registry";
   import { updates } from "$lib/updates.svelte";
 
@@ -344,7 +344,7 @@
       Switch off the pages you don't use. They leave the sidebar and do no work. Overview always stays.
     </p>
     <div class="kinds">
-      {#each tools as t (t.id)}
+      {#each tools.filter((t) => toolBuilt(t.id)) as t (t.id)}
         <label class="kind">
           <input type="checkbox" checked={toolOn(t.id)} disabled={t.id === "overview"} onchange={(e) => setToolOn(t.id, e.currentTarget.checked)} />
           <span><b>{t.label}</b></span>
