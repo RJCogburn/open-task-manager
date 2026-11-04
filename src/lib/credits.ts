@@ -215,15 +215,6 @@ export const credits = {
     url: "https://kernel.org/",
     group: "reads",
   },
-  ookla: {
-    name: "Speedtest CLI by Ookla",
-    role: "Internet speed test against speedtest.net servers (the speedtest command). Used only if you install it.",
-    license: "Proprietary (free to use; Ookla's license and privacy policy apply)",
-    url: "https://www.speedtest.net/apps/cli",
-    group: "runs",
-    program: "speedtest",
-    proprietary: true,
-  },
   librespeed: {
     name: "LibreSpeed",
     role: "Internet speed test: the method and the public test servers, which volunteers and sponsors run (librespeed.org)",

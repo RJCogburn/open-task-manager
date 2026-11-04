@@ -164,16 +164,15 @@ export type CpuScore = { single: number; multi: number; threads: number };
 export type MemoryScore = { copyGbps: number };
 export type DiskResult = { name: string; bandwidth: number; iops: number };
 export type GpuScore = { score: number; renderer: string };
-export type SpeedProvider = "auto" | "ookla" | "librespeed";
 export type NetScore = {
   latencyMs: number;
   downloadMbps: number;
   uploadMbps: number;
-  provider: "ookla" | "librespeed" | "cloudflare";
+  /** Results saved by versions before LibreSpeed may be Cloudflare's. */
+  provider: "librespeed" | "cloudflare";
   jitterMs: number | null;
   server: string | null;
   isp: string | null;
-  url: string | null;
 };
 
 export type KnownIssue = { text: string; source: string };
@@ -468,7 +467,7 @@ export const api = {
   benchMemory: () => invoke<MemoryScore>("bench_memory"),
   benchDisk: (folder: string) => invoke<DiskResult[]>("bench_disk", { folder }),
   benchGpu: () => invoke<GpuScore>("bench_gpu"),
-  benchNetwork: (provider: SpeedProvider) => invoke<NetScore>("bench_network", { provider }),
+  benchNetwork: () => invoke<NetScore>("bench_network"),
   installedApps: () => invoke<AppList>("installed_apps"),
   /** Whether each program a credit names is installed. */
   /** Installs a tool's package; asks for the password. */

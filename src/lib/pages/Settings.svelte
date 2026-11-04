@@ -329,15 +329,6 @@
     {/if}
 
     <h3 class="sub">Benchmarks</h3>
-    <div class="field">
-      <span>Internet speed test</span>
-      <div class="seg" role="group" aria-label="Internet speed test service">
-        <button aria-pressed={settings.speedTest === "auto"} onclick={() => (settings.speedTest = "auto")}>Automatic</button>
-        <button aria-pressed={settings.speedTest === "ookla"} onclick={() => (settings.speedTest = "ookla")}>Ookla</button>
-        <button aria-pressed={settings.speedTest === "librespeed"} onclick={() => (settings.speedTest = "librespeed")}>LibreSpeed</button>
-      </div>
-    </div>
-    <p class="faint hint">Automatic uses Ookla's speedtest command (speedtest.net) when it is installed, and otherwise the nearest of LibreSpeed's open source test servers.</p>
     <label class="field">
       <span>Remember the last results</span>
       <input type="checkbox" bind:checked={settings.rememberBenchmarks} onchange={() => (settings.rememberBenchmarks ? benchmarks.save() : benchmarks.forgetSaved())} />

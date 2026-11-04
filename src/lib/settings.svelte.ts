@@ -27,8 +27,6 @@ export type Settings = {
   confirmEnd: boolean;
   showIdleInterfaces: boolean;
   rememberBenchmarks: boolean;
-  /** Which service the internet speed test uses; "auto" prefers Ookla when installed. */
-  speedTest: "auto" | "ookla" | "librespeed";
   /** Charts given their own type, by the chart's label. Others follow `chart.style`. */
   chartTypes: Record<string, ChartType>;
   /** The order of cards in each group, as the user arranged them. */
@@ -62,7 +60,6 @@ export const defaults: Settings = {
   confirmEnd: true,
   showIdleInterfaces: false,
   rememberBenchmarks: true,
-  speedTest: "auto",
   chartTypes: {},
   cardOrder: {},
   cardLayout: {},
@@ -78,8 +75,6 @@ function load(): Settings {
       ...saved,
       chart: { ...defaults.chart, ...saved.chart },
       updates: { ...defaults.updates, ...saved.updates },
-      // Cloudflare was the speed test before LibreSpeed.
-      speedTest: saved.speedTest === "cloudflare" ? "librespeed" : (saved.speedTest ?? defaults.speedTest),
     };
   } catch {
     return structuredClone(defaults);

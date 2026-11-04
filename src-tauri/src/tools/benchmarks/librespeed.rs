@@ -56,7 +56,6 @@ pub fn test() -> Result<NetScore, String> {
         jitter_ms: Some(jitter),
         server: Some(server.name.clone()),
         isp: None,
-        url: None,
     })
 }
 

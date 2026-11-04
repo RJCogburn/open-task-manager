@@ -1,6 +1,6 @@
 //! Benchmarks. CPU and memory run built-in workloads; disk uses fio, GPU uses
-//! glmark2, and internet speed uses Ookla's speedtest when installed or curl
-//! against LibreSpeed's servers (librespeed.rs).
+//! glmark2, and internet speed uses curl against LibreSpeed's servers
+//! (librespeed.rs).
 
 use std::time::{Duration, Instant};
 
@@ -186,81 +186,15 @@ pub struct NetScore {
     latency_ms: f64,
     download_mbps: f64,
     upload_mbps: f64,
-    /// "ookla" or "librespeed".
+    /// Always "librespeed"; results saved by older versions may name another.
     provider: &'static str,
     jitter_ms: Option<f64>,
     server: Option<String>,
     isp: Option<String>,
-    /// The result page on speedtest.net.
-    url: Option<String>,
 }
 
-/// Speed test with Ookla's speedtest program when asked for, or when "auto"
-/// and it is installed; LibreSpeed's nearest server otherwise.
+/// Speed test against LibreSpeed's nearest server.
 #[tauri::command]
-pub async fn bench_network(provider: String) -> Result<NetScore, String> {
-    let ookla = match provider.as_str() {
-        "ookla" => true,
-        "librespeed" | "cloudflare" => false,
-        _ => programs::which("speedtest").is_some(),
-    };
-    if ookla { blocking(ookla_test).await } else { blocking(librespeed::test).await }
-}
-
-/// Ookla's own command-line client, which picks a nearby speedtest.net server.
-fn ookla_test() -> Result<NetScore, String> {
-    let out = programs::run("speedtest", &["--format=json", "--progress=no", "--accept-license", "--accept-gdpr"])?;
-    parse_ookla(&out.stdout, &out.stderr)
-}
-
-fn parse_ookla(stdout: &[u8], stderr: &[u8]) -> Result<NetScore, String> {
-    let parse = |bytes: &[u8]| -> Vec<Value> {
-        String::from_utf8_lossy(bytes).lines().filter_map(|l| serde_json::from_str::<Value>(l.trim()).ok()).collect()
-    };
-    let lines = parse(stdout);
-    let Some(result) = lines.iter().find(|v| v["type"] == "result") else {
-        // Errors come as JSON log lines.
-        let message = parse(stderr)
-            .into_iter()
-            .chain(lines.iter().cloned())
-            .find_map(|v| v["message"].as_str().map(str::to_string))
-            .unwrap_or_else(|| String::from_utf8_lossy(stderr).trim().to_string());
-        return Err(if message.is_empty() { "Ookla's speedtest gave no result.".into() } else { message });
-    };
-    let mbps = |dir: &str| result[dir]["bandwidth"].as_f64().unwrap_or(0.0) * 8.0 / 1e6;
-    let server = &result["server"];
-    Ok(NetScore {
-        latency_ms: result["ping"]["latency"].as_f64().unwrap_or(0.0),
-        download_mbps: mbps("download"),
-        upload_mbps: mbps("upload"),
-        provider: "ookla",
-        jitter_ms: result["ping"]["jitter"].as_f64(),
-        server: server["name"].as_str().map(|name| match server["location"].as_str() {
-            Some(location) => format!("{name}, {location}"),
-            None => name.to_string(),
-        }),
-        isp: result["isp"].as_str().map(str::to_string),
-        url: result["result"]["url"].as_str().map(str::to_string),
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reads_ookla_results() {
-        let out = br#"{"type":"result","ping":{"jitter":0.42,"latency":9.8},"download":{"bandwidth":117500000},"upload":{"bandwidth":43750000},"isp":"Example ISP","server":{"name":"Example","location":"Seattle, WA"},"result":{"url":"https://www.speedtest.net/result/c/abc"}}"#;
-        let r = parse_ookla(out, b"").unwrap();
-        assert_eq!((r.download_mbps, r.upload_mbps, r.latency_ms), (940.0, 350.0, 9.8));
-        assert_eq!(r.server.as_deref(), Some("Example, Seattle, WA"));
-        assert_eq!(r.url.as_deref(), Some("https://www.speedtest.net/result/c/abc"));
-    }
-
-    #[test]
-    fn reports_ookla_errors() {
-        let err =
-            br#"{"type":"log","timestamp":"2026-11-01T10:00:00Z","message":"Cannot read from socket","level":"error"}"#;
-        assert_eq!(parse_ookla(b"", err).err().as_deref(), Some("Cannot read from socket"));
-    }
+pub async fn bench_network() -> Result<NetScore, String> {
+    blocking(librespeed::test).await
 }

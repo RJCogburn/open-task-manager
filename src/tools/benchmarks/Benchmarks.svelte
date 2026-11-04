@@ -5,7 +5,6 @@
   import { api, type ToolStatus } from "$lib/api";
   import SpeedResult from "$lib/SpeedResult.svelte";
   import { benchmarks, type Results, type Test } from "$lib/benchmarks.svelte";
-  import { settings } from "$lib/settings.svelte";
   import { bytes } from "$lib/format";
   import { live } from "$lib/live.svelte";
 
@@ -131,11 +130,11 @@
       <div>
         <h3>Internet</h3>
         <p class="muted">
-          With Ookla's speedtest command when it is installed, the same test as speedtest.net. Otherwise curl
-          measures against the nearest LibreSpeed server over 6 connections, using up to about 450 MB down and 160 MB up.
+          curl measures against the nearest of LibreSpeed's open source test servers over 6 connections, using up to
+          about 450 MB down and 160 MB up.
         </p>
       </div>
-      {@render button("network", "Run", () => run("network", () => api.benchNetwork(settings.speedTest)))}
+      {@render button("network", "Run", () => run("network", api.benchNetwork))}
     </div>
     <SpeedResult />
     {@render status("network")}

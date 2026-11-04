@@ -16,7 +16,7 @@ system already has in one window, with live graphs.
 - **Power & Thermals**: every sensor lm-sensors can see, plus GPU power and CPU power (RAPL, needs root)
 - **Connections**: which programs hold which sockets, and which ones other computers can reach
 - **Disk Space**: a fast, parallel scan in the spirit of ncdu and Filelight; browse folders, largest files and space by file type
-- **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (LibreSpeed, or Ookla's speedtest if installed)
+- **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (LibreSpeed)
 - **Installed Apps**: pacman, dpkg, rpm and Flatpak packages by size
 - **Security audit**: runs [Lynis](https://github.com/CISOfy/lynis) and explains each finding; safe fixes come with a button and can be undone, and findings best left alone on a desktop say why
 - **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
@@ -115,7 +115,6 @@ it with your package manager (asking for your password first).
 | NVIDIA graphics cards | the NVIDIA driver (`nvidia-smi`) |
 | Disk benchmark | `fio` |
 | Graphics benchmark | `glmark2` |
-| Speed test matching speedtest.net | Ookla's [`speedtest`](https://www.speedtest.net/apps/cli) (free, not open source) |
 | Security audit | `lynis` |
 | Drive firmware updates | `fwupd`; `nvme-cli` for Western Digital and SanDisk drives |
 

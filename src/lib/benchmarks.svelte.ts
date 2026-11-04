@@ -17,7 +17,10 @@ const KEY = "otm.benchmarks";
 function load(): Results {
   if (!settings.rememberBenchmarks) return {};
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    const saved: Results = JSON.parse(localStorage.getItem(KEY) ?? "{}");
+    // Versions before 0.85 could test with Ookla's speedtest, no longer used.
+    if ((saved.network?.provider as string) === "ookla") delete saved.network;
+    return saved;
   } catch {
     return {};
   }
@@ -45,7 +48,7 @@ class Benchmarks {
     }
   }
 
-  runNetwork = () => this.run("network", () => api.benchNetwork(settings.speedTest));
+  runNetwork = () => this.run("network", api.benchNetwork);
 
   save() {
     if (!settings.rememberBenchmarks) return;

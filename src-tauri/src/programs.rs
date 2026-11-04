@@ -73,14 +73,6 @@ fn install_command(program: &str) -> Option<Vec<String>> {
 }
 
 fn install_hint(program: &str) -> Option<String> {
-    if program == "speedtest" {
-        // Ookla ships it themselves rather than through distribution repositories.
-        return Some(if which("pacman").is_some() {
-            "an AUR helper, e.g. yay -S ookla-speedtest-bin, or see https://www.speedtest.net/apps/cli".into()
-        } else {
-            "the instructions at https://www.speedtest.net/apps/cli".into()
-        });
-    }
     install_command(program).map(|c| format!("sudo {}", c.join(" ")))
 }
 
