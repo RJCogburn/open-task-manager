@@ -49,11 +49,11 @@
   const verdict = $derived.by(() => {
     if (!report) return "";
     const bad = problems.filter((c) => c.status === "bad").length;
-    if (!problems.length) return "Nothing is slowing your system down right now.";
+    if (!problems.length) return "No performance degradation detected.";
     const n = problems.length;
     return bad
-      ? `${n} ${n === 1 ? "thing is" : "things are"} slowing your system down.`
-      : `${n} ${n === 1 ? "thing" : "things"} could slow your system down.`;
+      ? `Performance degradation detected: ${n} ${n === 1 ? "issue" : "issues"} found.`
+      : `${n} possible performance ${n === 1 ? "issue" : "issues"} found.`;
   });
   const pressure = $derived(
     report?.pressure
