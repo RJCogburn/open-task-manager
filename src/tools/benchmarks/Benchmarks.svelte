@@ -1,5 +1,6 @@
 <script lang="ts">
   import { board, card } from "$lib/arrange.svelte";
+  import InstallPrompt from "$lib/InstallPrompt.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, type ToolStatus } from "$lib/api";
   import SpeedResult from "$lib/SpeedResult.svelte";
@@ -17,6 +18,11 @@
   });
 
   const tool = (program: string) => tools.find((t) => t.program === program);
+  // After installing, the notice goes and the test can run.
+  function refresh() {
+    for (const t of Object.keys(b.errors) as Test[]) if (b.errors[t]?.missing) b.errors[t] = undefined;
+    api.toolStatus().then((t) => (tools = t));
+  }
 
   async function run<T extends Test>(test: T, go: () => Promise<Omit<NonNullable<Results[T]>, "at">>) {
     await b.run(test, go);
@@ -32,17 +38,14 @@
 />
 
 {#snippet status(test: Test, program?: string)}
-  {#if b.errors[test]}
-    <div class="notice" class:bad={!b.errors[test]!.missing}>
+  {#if b.errors[test]?.missing}
+    <InstallPrompt program={b.errors[test]!.missing!} compact oninstalled={refresh} />
+  {:else if b.errors[test]}
+    <div class="notice bad">
       <span>{b.errors[test]!.message}</span>
     </div>
   {:else if program && tool(program) && !tool(program)!.installed}
-    <div class="notice">
-      <span>
-        Needs <b>{program}</b>, which isn't installed.
-        {#if tool(program)!.installHint}Install it with <code>{tool(program)!.installHint}</code>{/if}
-      </span>
-    </div>
+    <InstallPrompt {program} compact oninstalled={refresh} />
   {/if}
 {/snippet}
 

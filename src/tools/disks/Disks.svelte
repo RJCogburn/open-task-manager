@@ -3,7 +3,8 @@
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
   import ScanResults from "$lib/ScanResults.svelte";
-  import { api, parseError, type Drive, type FirmwareReport, type Mount, type WdCheck } from "$lib/api";
+  import InstallPrompt from "$lib/InstallPrompt.svelte";
+  import { api, missingProgram, parseError, type Drive, type FirmwareReport, type Mount, type WdCheck } from "$lib/api";
   import { external } from "$lib/link";
   import { bytes, temp, count, pct, rate } from "$lib/format";
   import { live, poll } from "$lib/live.svelte";
@@ -13,6 +14,7 @@
   let drives = $state<Drive[]>([]);
   let mounts = $state<Mount[]>([]);
   let error = $state("");
+  let missing = $state<string | null>(null);
   let healthError = $state("");
   let readingHealth = $state(false);
 
@@ -20,8 +22,10 @@
     try {
       drives = await api.drives();
       error = "";
+      missing = null;
     } catch (e) {
       error = parseError(e).message;
+      missing = missingProgram(e);
     }
   };
   poll(load, () => 15_000);
@@ -30,12 +34,14 @@
   // Firmware is read once: asking fwupd takes a moment.
   let firmware = $state<FirmwareReport | null>(null);
   let firmwareBusy = $state("");
-  let firmwareNote = $state<{ text: string; bad?: boolean } | null>(null);
+  let firmwareNote = $state<{ text: string; bad?: boolean; missing?: string | null } | null>(null);
+  /** A firmware error, or the program it needs and couldn't find. */
+  const firmwareError = (e: unknown) => ({ text: parseError(e).message, bad: true, missing: missingProgram(e) });
   const loadFirmware = async () => {
     try {
       firmware = await api.firmware();
     } catch (e) {
-      firmwareNote = { text: parseError(e).message, bad: true };
+      firmwareNote = firmwareError(e);
     }
   };
   loadFirmware();
@@ -48,7 +54,7 @@
       await loadFirmware();
       firmwareNote = { text: "The firmware list is up to date." };
     } catch (e) {
-      firmwareNote = { text: parseError(e).message, bad: true };
+      firmwareNote = firmwareError(e);
     } finally {
       firmwareBusy = "";
     }
@@ -64,7 +70,7 @@
     try {
       wd[d.name] = await api.wdFirmwareCheck(d.name);
     } catch (e) {
-      firmwareNote = { text: parseError(e).message, bad: true };
+      firmwareNote = firmwareError(e);
     } finally {
       firmwareBusy = "";
     }
@@ -86,7 +92,7 @@
       firmwareNote = { text: await api.wdFirmwareInstall(d.name, version) };
       delete wd[d.name];
     } catch (e) {
-      firmwareNote = { text: parseError(e).message, bad: true };
+      firmwareNote = firmwareError(e);
     } finally {
       firmwareBusy = "";
     }
@@ -105,7 +111,7 @@
       firmwareNote = { text: await api.firmwareUpdate(id) };
       await loadFirmware();
     } catch (e) {
-      firmwareNote = { text: parseError(e).message, bad: true };
+      firmwareNote = firmwareError(e);
     } finally {
       firmwareBusy = "";
     }
@@ -170,7 +176,20 @@
   subtitle="Each drive, how full it is, how healthy it is, and how busy"
 />
 
-{#if error}<div class="notice bad" style="margin-bottom: 14px">{error}</div>{/if}
+{#if missing}
+  <InstallPrompt program={missing} name="util-linux" why="The list of drives comes from lsblk, part of util-linux." oninstalled={load} />
+{:else if error}<div class="notice bad" style="margin-bottom: 14px">{error}</div>{/if}
+{#if drives.some((d) => d.health.note.startsWith("Install smartmontools"))}
+  <div style="margin-bottom: 14px">
+    <InstallPrompt
+      program="smartctl"
+      name="smartmontools"
+      why="Drive health, temperature and wear come from smartctl, part of smartmontools."
+      compact
+      oninstalled={load}
+    />
+  </div>
+{/if}
 
 {#if needsAdmin}
   <div class="notice info spread" style="margin-bottom: 14px">
@@ -363,10 +382,13 @@
   <h2 class="section">Firmware updates</h2>
   <section class="card">
     {#if !firmware.fwupd}
-      <p class="muted">
-        Firmware updates come from fwupd, which isn't installed. Install the <code>fwupd</code> package to get updates
-        that drive makers publish for Linux.
-      </p>
+      <InstallPrompt
+        program="fwupdmgr"
+        name="fwupd"
+        why="Firmware updates that drive makers publish for Linux come through fwupd."
+        compact
+        oninstalled={loadFirmware}
+      />
     {:else}
       <div class="spread">
         <p class="muted" style="margin: 0">
@@ -383,7 +405,16 @@
         </button>
       </div>
     {/if}
-    {#if firmwareNote}<div class="notice {firmwareNote.bad ? 'bad' : 'info'}" style="margin-top: 12px">{firmwareNote.text}</div>{/if}
+    {#if firmwareNote?.missing}
+      <div style="margin-top: 12px">
+        <InstallPrompt
+          program={firmwareNote.missing}
+          name={firmwareNote.missing === "nvme" ? "nvme-cli" : firmwareNote.missing}
+          compact
+          oninstalled={() => (firmwareNote = null)}
+        />
+      </div>
+    {:else if firmwareNote}<div class="notice {firmwareNote.bad ? 'bad' : 'info'}" style="margin-top: 12px">{firmwareNote.text}</div>{/if}
   </section>
 {/if}
 

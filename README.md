@@ -105,7 +105,8 @@ If you built the Arch package, update by building it again: in your clone, run
 ## Optional tools
 
 Everything works without these. A few features use them when they're
-installed, and the app tells you when one is missing and how to install it.
+installed, and when one is missing, the page that needs it offers to install
+it with your package manager (asking for your password first).
 
 | Feature | Needs |
 |---|---|
@@ -115,7 +116,7 @@ installed, and the app tells you when one is missing and how to install it.
 | Disk benchmark | `fio` |
 | Graphics benchmark | `glmark2` |
 | Speed test matching speedtest.net | Ookla's [`speedtest`](https://www.speedtest.net/apps/cli) (free, not open source) |
-| Security audit | `lynis` (the page offers to install it) |
+| Security audit | `lynis` |
 | Drive firmware updates | `fwupd`; `nvme-cli` for Western Digital and SanDisk drives |
 
 The network and drive pages also use `iproute2`, `util-linux` and `curl`, which

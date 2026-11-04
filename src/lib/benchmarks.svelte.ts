@@ -1,6 +1,6 @@
 // Benchmark results, shared by the Benchmarks page and the Network page's
 // speed test. Kept between sessions unless turned off in Settings.
-import { api, parseError, type CpuScore, type DiskResult, type GpuScore, type MemoryScore, type NetScore } from "./api";
+import { api, missingProgram, parseError, type CpuScore, type DiskResult, type GpuScore, type MemoryScore, type NetScore } from "./api";
 import { settings } from "./settings.svelte";
 
 export type Results = {
@@ -26,7 +26,8 @@ function load(): Results {
 class Benchmarks {
   results = $state<Results>(load());
   running = $state<Test | null>(null);
-  errors = $state<Partial<Record<Test, { message: string; missing: boolean }>>>({});
+  /** `missing` names the program a test needs and couldn't find. */
+  errors = $state<Partial<Record<Test, { message: string; missing: string | null }>>>({});
   diskFolder = $state(localStorage.getItem(KEY + ".folder") ?? "");
 
   async run<T extends Test>(test: T, go: () => Promise<Omit<NonNullable<Results[T]>, "at">>) {
@@ -38,7 +39,7 @@ class Benchmarks {
       this.save();
     } catch (e) {
       const err = parseError(e);
-      this.errors[test] = { message: err.message, missing: err.kind === "missing-tool" };
+      this.errors[test] = { message: err.message, missing: missingProgram(e) };
     } finally {
       this.running = null;
     }

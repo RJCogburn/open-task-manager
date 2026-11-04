@@ -1,8 +1,9 @@
 <script lang="ts">
   import { board, card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
+  import InstallPrompt from "$lib/InstallPrompt.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
-  import { api, parseError, type NetProcess, type Origin, type ProcessSource } from "$lib/api";
+  import { api, missingProgram, parseError, type NetProcess, type Origin, type ProcessSource } from "$lib/api";
   import SpeedResult from "$lib/SpeedResult.svelte";
   import { benchmarks } from "$lib/benchmarks.svelte";
   import { netRate, bytes, count } from "$lib/format";
@@ -20,14 +21,18 @@
 
   let procs = $state<NetProcess[]>([]);
   let error = $state("");
-  poll(async () => {
+  let missing = $state<string | null>(null);
+  async function loadActivity() {
     try {
       procs = await api.netActivity();
       error = "";
+      missing = null;
     } catch (e) {
       error = parseError(e).message;
+      missing = missingProgram(e);
     }
-  }, () => Math.max(2000, settings.intervalMs));
+  }
+  poll(loadActivity, () => Math.max(2000, settings.intervalMs));
 
   const using = $derived(
     selected
@@ -114,8 +119,10 @@
       <span class="spinner" style:color="var(--accent)"></span>
       <span class="muted">Measuring latency, download and upload. This takes about 25 seconds.</span>
     </div>
+  {:else if speedError?.missing}
+    <InstallPrompt program={speedError.missing} compact oninstalled={benchmarks.runNetwork} />
   {:else if speedError}
-    <div class="notice" class:bad={!speedError.missing}>{speedError.message}</div>
+    <div class="notice bad">{speedError.message}</div>
   {/if}
   <SpeedResult />
 </section>
@@ -158,7 +165,11 @@
   </div>
 {/if}
 
-{#if error}<div class="notice bad" style="margin-top: 14px">{error}</div>{/if}
+{#if missing}
+  <div style="margin-top: 14px">
+    <InstallPrompt program={missing} name="iproute2" why="Which programs use the network comes from ss, part of iproute2." compact oninstalled={loadActivity} />
+  </div>
+{:else if error}<div class="notice bad" style="margin-top: 14px">{error}</div>{/if}
 
 {#if suspicious.length}
   <h2 class="section">Needs a look</h2>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getVersion } from "@tauri-apps/api/app";
   import PageHeader from "$lib/PageHeader.svelte";
-  import { api, type ToolStatus } from "$lib/api";
+  import { api, parseError, type ToolStatus } from "$lib/api";
   import { credits, groupTitles, type Credit, type CreditGroup, type CreditId } from "$lib/credits";
   import { external } from "$lib/link";
   import { tools as allTools } from "../../tools/registry";
@@ -16,6 +16,23 @@
   /** The tools that name a credit among their sources. */
   const usedBy = (id: CreditId) => allTools.filter((t) => t.sources?.includes(id)).map((t) => t.label);
   const installed = (c: Credit) => tools.find((t) => t.program === c.program);
+
+  // Installing a missing tool from the list; polkit asks for the password.
+  let installing = $state("");
+  let installError = $state("");
+  async function install(program: string) {
+    installing = program;
+    installError = "";
+    try {
+      await api.installTool(program);
+      tools = await api.toolStatus();
+    } catch (e) {
+      const message = parseError(e).message;
+      if (message !== "Cancelled.") installError = message;
+    } finally {
+      installing = "";
+    }
+  }
 </script>
 
 <PageHeader title="About & Credits" subtitle="Open Task Manager is free software, built on the work of these projects." />
@@ -25,8 +42,9 @@
     <h2>Open Task Manager {#if version}<span class="faint version">version {version}</span>{/if}</h2>
     <p>
       A free task manager for Linux that brings together tools your system already has: live graphs for CPU, memory,
-      disks, network and graphics cards; a process manager; sensors and power; network connections; a disk space
-      analyser; benchmarks; and a list of installed software. No account, no telemetry, nothing held back for a paid
+      disks, network and graphics cards, with a history you can read back; a process manager; a check of what's
+      slowing your computer down; sensors and power; network connections; a disk space analyser; a security audit;
+      benchmarks; and a list of installed software. No account, no telemetry, nothing held back for a paid
       version.
     </p>
     <p>
@@ -37,6 +55,8 @@
   </div>
   <span class="badge ok license">GPL-3.0-or-later</span>
 </section>
+
+{#if installError}<div class="notice bad" style="margin-bottom: 14px">{installError}</div>{/if}
 
 {#each groups as group (group)}
   {@const items = all.filter(([, c]) => c.group === group)}
@@ -57,9 +77,16 @@
             <td><span class="badge" class:warn={c.proprietary}>{c.license}</span></td>
             <td class="num">
               {#if t}
-                <span class="badge" class:ok={t.installed} title={!t.installed && t.installHint ? t.installHint : ""}>
-                  {t.installed ? "Installed" : "Not installed"}
-                </span>
+                {#if !t.installed && t.installable}
+                  <button class="btn small" disabled={installing !== ""} onclick={() => install(t.program)}
+                    title="Runs {t.installHint?.replace(/^sudo /, '')} as administrator; asks for your password">
+                    {#if installing === t.program}<span class="spinner"></span> Installing…{:else}Install{/if}
+                  </button>
+                {:else}
+                  <span class="badge" class:ok={t.installed} title={!t.installed && t.installHint ? t.installHint : ""}>
+                    {t.installed ? "Installed" : "Not installed"}
+                  </span>
+                {/if}
               {/if}
             </td>
           </tr>
@@ -75,6 +102,11 @@
 </p>
 
 <style>
+  .btn.small {
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+
   .used {
     font-size: 12px;
     margin-top: 2px;

@@ -2,22 +2,27 @@
   import { board, card } from "$lib/arrange.svelte";
   import Chart from "$lib/Chart.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
-  import { api, parseError, type Reading, type SensorReport } from "$lib/api";
+  import InstallPrompt from "$lib/InstallPrompt.svelte";
+  import { api, missingProgram, parseError, type Reading, type SensorReport } from "$lib/api";
   import { temp, ghz, watts } from "$lib/format";
   import { live, poll } from "$lib/live.svelte";
 
   const s = $derived(live.sample);
   let report = $state<SensorReport | null>(null);
   let error = $state("");
+  let missing = $state<string | null>(null);
 
-  poll(async () => {
+  async function load() {
     try {
       report = await api.sensors();
       error = "";
+      missing = null;
     } catch (e) {
       error = parseError(e).message;
+      missing = missingProgram(e);
     }
-  }, () => Math.max(1500, live.settings.intervalMs));
+  }
+  poll(load, () => Math.max(1500, live.settings.intervalMs));
 
   const kindOrder: Reading["kind"][] = ["temperature", "power", "fan", "pwm", "frequency", "voltage", "current", "humidity"];
   const kindNames: Record<string, string> = {
@@ -94,7 +99,16 @@
   </div>
 {/if}
 
-{#if error}
+{#if missing}
+  <div style="margin-top: 16px">
+    <InstallPrompt
+      program={missing}
+      name="lm_sensors"
+      why="Temperatures, fan speeds and voltages come from lm_sensors, which reads the chips on your motherboard."
+      oninstalled={load}
+    />
+  </div>
+{:else if error}
   <div class="notice" style="margin-top: 16px">{error}</div>
 {/if}
 

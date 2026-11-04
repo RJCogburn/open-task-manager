@@ -416,7 +416,13 @@ export type WidgetConfig = {
 };
 export type WidgetStatus = { config: WidgetConfig; feedPath: string | null };
 
-export type ToolStatus = { program: string; installed: boolean; installHint: string | null };
+export type ToolStatus = {
+  program: string;
+  installed: boolean;
+  installHint: string | null;
+  /** Whether the app can install it itself (installTool). */
+  installable: boolean;
+};
 
 export const api = {
   systemInfo: () => invoke<SystemInfo>("system_info"),
@@ -488,6 +494,12 @@ export const api = {
   autostartGet: () => invoke<Autostart>("autostart_get"),
   autostartSet: (enabled: boolean, minimized: boolean) => invoke<Autostart>("autostart_set", { enabled, minimized }),
 };
+
+/** The program a "missing-tool" error names ("smartctl is not installed…"), or null for other errors. */
+export function missingProgram(e: unknown): string | null {
+  const err = parseError(e);
+  return err.kind === "missing-tool" ? (err.message.split(" ")[0] ?? null) : null;
+}
 
 /** Errors from the Rust side carry a kind before the first colon. */
 export function parseError(e: unknown): { kind: "needs-admin" | "missing-tool" | "other"; message: string } {

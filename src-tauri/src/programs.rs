@@ -38,6 +38,7 @@ fn package(program: &str) -> Option<[&'static str; 4]> {
         "curl" => ["curl"; 4],
         "nvme" => ["nvme-cli"; 4],
         "lynis" => ["lynis"; 4],
+        "fwupdmgr" => ["fwupd"; 4],
         "lspci" => ["pciutils"; 4],
         "pkexec" => ["polkit", "pkexec", "polkit", "polkit"],
         "smartctl" => ["smartmontools"; 4],
@@ -47,22 +48,28 @@ fn package(program: &str) -> Option<[&'static str; 4]> {
     })
 }
 
+/// This system's package manager: its index into `package`'s list (Arch,
+/// Debian, Fedora, openSUSE), and the command that installs without asking.
+fn manager() -> Option<(usize, &'static [&'static str])> {
+    if which("pacman").is_some() {
+        Some((0, &["pacman", "-S", "--needed", "--noconfirm"]))
+    } else if which("apt-get").is_some() {
+        Some((1, &["apt-get", "install", "-y"]))
+    } else if which("zypper").is_some() {
+        Some((3, &["zypper", "--non-interactive", "install"]))
+    } else if which("dnf").is_some() {
+        Some((2, &["dnf", "install", "-y"]))
+    } else {
+        None
+    }
+}
+
 /// The command that installs a tool's package without further questions,
 /// with this system's package manager.
 fn install_command(program: &str) -> Option<Vec<String>> {
-    let [arch, debian, fedora, suse] = package(program)?;
-    let words: &[&str] = if which("pacman").is_some() {
-        &["pacman", "-S", "--needed", "--noconfirm", arch]
-    } else if which("apt-get").is_some() {
-        &["apt-get", "install", "-y", debian]
-    } else if which("zypper").is_some() {
-        &["zypper", "--non-interactive", "install", suse]
-    } else if which("dnf").is_some() {
-        &["dnf", "install", "-y", fedora]
-    } else {
-        return None;
-    };
-    Some(words.iter().map(|w| w.to_string()).collect())
+    let (i, command) = manager()?;
+    let name = package(program)?[i];
+    Some(command.iter().copied().chain([name]).map(str::to_string).collect())
 }
 
 fn install_hint(program: &str) -> Option<String> {
@@ -77,12 +84,18 @@ fn install_hint(program: &str) -> Option<String> {
     install_command(program).map(|c| format!("sudo {}", c.join(" ")))
 }
 
+/// Whether the app can install a tool itself. Installing goes through
+/// pkexec, so pkexec can't install itself.
+fn installable(program: &str) -> bool {
+    program != "pkexec" && install_command(program).is_some()
+}
+
 /// Installs a tool's package through polkit, which asks for the password.
 /// Only the packages listed in `package` can be installed this way.
 #[tauri::command]
 pub async fn install_tool(program: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let Some(command) = install_command(&program) else {
+        let Some(command) = install_command(&program).filter(|_| installable(&program)) else {
             return Err(format!("Open Task Manager can't install {program} on this system."));
         };
         let args: Vec<&str> = command.iter().map(String::as_str).collect();
@@ -107,6 +120,8 @@ pub struct ToolStatus {
     program: String,
     installed: bool,
     install_hint: Option<String>,
+    /// Whether the app can install it itself, with install_tool.
+    installable: bool,
 }
 
 /// Whether each program is installed, and how to install it if not. The
@@ -120,6 +135,7 @@ pub fn tool_status(programs: Vec<String>) -> Vec<ToolStatus> {
         .map(|program| ToolStatus {
             installed: which(&program).is_some(),
             install_hint: install_hint(&program),
+            installable: installable(&program),
             program,
         })
         .collect()

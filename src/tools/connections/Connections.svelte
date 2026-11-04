@@ -1,7 +1,8 @@
 <script lang="ts">
   import { board, card } from "$lib/arrange.svelte";
   import PageHeader from "$lib/PageHeader.svelte";
-  import { api, parseError, type Connection } from "$lib/api";
+  import InstallPrompt from "$lib/InstallPrompt.svelte";
+  import { api, missingProgram, parseError, type Connection } from "$lib/api";
   import { poll } from "$lib/live.svelte";
   import { settings } from "$lib/settings.svelte";
 
@@ -11,15 +12,19 @@
   let query = $state("");
   let paused = $state(false);
 
-  poll(async () => {
+  let missing = $state<string | null>(null);
+  async function load() {
     if (paused) return;
     try {
       list = await api.connections();
       error = "";
+      missing = null;
     } catch (e) {
       error = parseError(e).message;
+      missing = missingProgram(e);
     }
-  }, () => 3000);
+  }
+  poll(load, () => 3000);
 
   const listening = (c: Connection) => c.state === "LISTEN" || c.state === "UNCONN";
   const rows = $derived.by(() => {
@@ -86,7 +91,14 @@
   </section>
 </div>
 
-{#if error}<div class="notice bad" style="margin-bottom: 12px">{error}</div>{/if}
+{#if missing}
+  <InstallPrompt
+    program={missing}
+    name="iproute2"
+    why="The list of connections comes from ss, part of iproute2, which almost every system has."
+    oninstalled={load}
+  />
+{:else if error}<div class="notice bad" style="margin-bottom: 12px">{error}</div>{/if}
 {#if unknownOwners > 0}
   <div class="notice info" style="margin-bottom: 12px">
     {unknownOwners} sockets belong to system services or other users. Linux only shows their owner to administrators.

@@ -151,7 +151,6 @@
     program="lynis"
     name="Lynis"
     why="The security audit is done by Lynis, a free, open source auditing tool from CISOfy."
-    hint={lynis.hint}
     oninstalled={checkInstalled}
   />
 {/if}
