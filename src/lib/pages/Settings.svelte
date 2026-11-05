@@ -91,6 +91,35 @@
     }
   }
 
+  const colorFields = [
+    { key: "bg", label: "Background", css: "--bg" },
+    { key: "sidebar", label: "Sidebar", css: "--sidebar" },
+    { key: "panel", label: "Panels", css: "--panel" },
+    { key: "text", label: "Text", css: "--text" },
+  ] as const;
+
+  /** A CSS colour as #rrggbb for the colour picker, dropping any see-through. */
+  function hex(css: string): string {
+    const ctx = document.createElement("canvas").getContext("2d");
+    if (!ctx) return "#000000";
+    ctx.fillStyle = css;
+    const out = String(ctx.fillStyle);
+    if (out.startsWith("#")) return out;
+    const [r, g, b] = (out.match(/[\d.]+/g) ?? []).map(Number);
+    return "#" + [r, g, b].map((n) => Math.round(n || 0).toString(16).padStart(2, "0")).join("");
+  }
+
+  // The theme's own colours, shown in the pickers until one is chosen.
+  const themeColors = $derived.by(() => {
+    void settings.theme;
+    void { ...settings.colors };
+    const style = getComputedStyle(document.documentElement);
+    return Object.fromEntries(colorFields.map((f) => [f.key, hex(style.getPropertyValue(f.css).trim())])) as Record<
+      (typeof colorFields)[number]["key"],
+      string
+    >;
+  });
+
   const accents = ["#00e5ff", "#3ce6b4", "#7cff4f", "#ffd23f", "#ff8a3d", "#ff4f7b", "#d36bff", "#6b8bff", "#e8eef2"];
 
   const styles: { id: ChartStyle; label: string }[] = [
@@ -157,6 +186,21 @@
         <input type="color" value={settings.accent || "#00e5ff"} title="Any colour" aria-label="Any colour" onchange={(e) => live.setAccent(e.currentTarget.value)} />
       </div>
     </div>
+    {#each colorFields as f (f.key)}
+      <div class="field">
+        <span>{f.label}</span>
+        <div class="swatches" role="group" aria-label={f.label}>
+          <button class="swatch auto" aria-pressed={!settings.colors[f.key]} title="The theme's own" onclick={() => live.setColor(f.key, "")}>A</button>
+          <input
+            type="color"
+            value={settings.colors[f.key] || themeColors[f.key]}
+            title="Any colour"
+            aria-label="{f.label}: any colour"
+            oninput={(e) => live.setColor(f.key, e.currentTarget.value)}
+          />
+        </div>
+      </div>
+    {/each}
     <div class="field">
       <span>Graph style</span>
       <div class="seg" role="group" aria-label="Graph style">
@@ -642,5 +686,7 @@
     border: 0;
     background: none;
     cursor: pointer;
+    /* So a colour close to the panel's still shows. */
+    outline: 1px solid var(--border-strong);
   }
 </style>

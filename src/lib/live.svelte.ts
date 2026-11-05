@@ -146,10 +146,32 @@ class Live {
     const root = document.documentElement.style;
     if (this.settings.accent) root.setProperty("--accent", this.settings.accent);
     else root.removeProperty("--accent");
+    // Each chosen colour replaces the theme's; the shades for raised and
+    // hovered panels are mixed from the panel colour toward the text's.
+    const { bg, sidebar, panel, text } = this.settings.colors;
+    const set = (name: string, value: string) => (value ? root.setProperty(name, value) : root.removeProperty(name));
+    set("--bg", bg);
+    set("--sidebar", sidebar);
+    set("--panel", panel);
+    set("--panel-2", panel && "color-mix(in srgb, var(--panel) 94%, var(--text))");
+    set("--panel-hover", panel && "color-mix(in srgb, var(--panel) 88%, var(--text))");
+    // Chosen text brings dimmer shades of itself for labels and hints.
+    set("--text", text);
+    set("--muted", text && "color-mix(in srgb, var(--text) 68%, transparent)");
+    set("--faint", text && "color-mix(in srgb, var(--text) 48%, transparent)");
+    // Some themes paint over the background; app.css keeps only their pattern.
+    const el = document.documentElement;
+    if (bg) el.dataset.customBg = "";
+    else delete el.dataset.customBg;
   }
 
   setAccent(color: string) {
     this.settings.accent = color;
+    this.applyTheme();
+  }
+
+  setColor(which: keyof Settings["colors"], color: string) {
+    this.settings.colors[which] = color;
     this.applyTheme();
   }
 }

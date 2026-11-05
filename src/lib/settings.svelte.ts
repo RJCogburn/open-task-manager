@@ -11,6 +11,8 @@ export type Settings = {
   theme: "system" | "dark" | "light" | "neon" | "hud";
   /** A colour for buttons, highlights and the selected page, or "" for the theme's own. */
   accent: string;
+  /** The window's own colours, each "" for the theme's. The shades between come from these. */
+  colors: { bg: string; sidebar: string; panel: string; text: string };
   /** A page id, or "last" for wherever the window was when it closed. */
   startPage: string;
   lastPage: string;
@@ -52,6 +54,7 @@ export const defaults: Settings = {
   intervalMs: 1000,
   theme: "system",
   accent: "",
+  colors: { bg: "", sidebar: "", panel: "", text: "" },
   startPage: "overview",
   lastPage: "overview",
   chart: { style: "smooth", fill: true, grid: true, thickness: 1.75, history: 120 },
@@ -74,6 +77,7 @@ function load(): Settings {
       ...defaults,
       ...saved,
       chart: { ...defaults.chart, ...saved.chart },
+      colors: { ...defaults.colors, ...saved.colors },
       updates: { ...defaults.updates, ...saved.updates },
     };
   } catch {
