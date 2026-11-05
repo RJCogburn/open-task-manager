@@ -4,6 +4,7 @@
   import PageHeader from "$lib/PageHeader.svelte";
   import ScanResults from "$lib/ScanResults.svelte";
   import InstallPrompt from "$lib/InstallPrompt.svelte";
+  import DriveArt, { type ArtKind } from "./DriveArt.svelte";
   import { api, missingProgram, parseError, type Drive, type FirmwareReport, type Mount, type WdCheck } from "$lib/api";
   import { external } from "$lib/link";
   import { bytes, temp, count, pct, rate } from "$lib/format";
@@ -133,6 +134,9 @@
     return { mounted: mounted.length > 0, used, available, share: used + available ? (used / (used + available)) * 100 : 0 };
   }
 
+  // USB comes first: an internal drive in an enclosure looks like an external one.
+  const art = (d: Drive): ArtKind =>
+    d.transport === "usb" ? "external" : d.transport === "nvme" ? "nvme" : d.transport === "mmc" ? "sd" : d.rotational ? "hdd" : "ssd";
   const kind = (d: Drive) => (d.transport === "nvme" ? "NVMe SSD" : d.rotational ? "Hard drive" : "SSD");
   const connection = (d: Drive) =>
     ({ nvme: "NVMe", sata: "SATA", ata: "SATA", usb: "USB", sas: "SAS", mmc: "SD card", virtio: "Virtual" })[d.transport] ??
@@ -209,6 +213,7 @@
     {@const open = expanded === d.name}
     {@const target = targetOf(d)}
     <section class="card drive" use:card={{ group: "disks", id: d.name }} class:open data-wide={open ? "true" : undefined}>
+      <DriveArt kind={art(d)} />
       <div class="spread top">
         <div class="name">
           <h3>/dev/{d.name} · {kind(d)}{d.removable ? " · removable" : ""}</h3>
@@ -455,6 +460,12 @@
 {/if}
 
 <style>
+  /* The drive's picture sits under the card's content, above its background. */
+  .drive {
+    position: relative;
+    isolation: isolate;
+  }
+
   .firmware {
     margin-top: 10px;
     font-size: 13px;
