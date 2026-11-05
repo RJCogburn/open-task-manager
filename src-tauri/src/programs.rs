@@ -6,6 +6,24 @@ use std::process::{Command, Output, Stdio};
 
 use serde::Serialize;
 
+/// A duration as systemd prints it, such as "1min 2.5s" or "456ms", in seconds.
+pub fn parse_duration(text: &str) -> Option<f64> {
+    let mut total = 0.0;
+    for part in text.split_whitespace() {
+        let (num, unit) = part.split_at(part.find(|c: char| c.is_ascii_alphabetic())?);
+        let n: f64 = num.parse().ok()?;
+        total += n * match unit {
+            "ms" => 0.001,
+            "s" => 1.0,
+            "min" => 60.0,
+            "h" => 3600.0,
+            "us" | "µs" => 0.000_001,
+            _ => return None,
+        };
+    }
+    Some(total)
+}
+
 pub fn which(program: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     std::env::split_paths(&path).map(|dir| dir.join(program)).find(|p| p.is_file())

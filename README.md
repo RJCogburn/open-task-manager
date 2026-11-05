@@ -18,6 +18,7 @@ system already has in one window, with live graphs.
 - **Disk Space**: a fast, parallel scan in the spirit of ncdu and Filelight; browse folders, largest files and space by file type
 - **Benchmarks**: CPU and memory built in; disk (fio), graphics (glmark2) and internet (LibreSpeed)
 - **Installed Apps**: pacman, dpkg, rpm and Flatpak packages by size
+- **Startup**: everything that starts with the computer or when you log in (autostart apps, your services, system services, @reboot crontab lines) in one list, each with a switch, how long it held up start-up and the memory it uses now
 - **Security audit**: runs [Lynis](https://github.com/CISOfy/lynis) and explains each finding; safe fixes come with a button and can be undone, and findings best left alone on a desktop say why
 - **System tray**: keeps running, and logging, with the window closed; can start in the tray at login
 - **Desktop widgets**: a see-through panel with the readings you pick, and a [readings feed](docs/readings-feed.md) so Plasma widgets, GNOME extensions or conky can show them too
@@ -147,9 +148,9 @@ To add a tool of your own, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Every tool with a Rust side can be left out of a build: `benchmarks`,
 `connections`, `disk-space`, `disks`, `installed-apps`, `network`, `processes`,
-`security-audit`, `sensors` and `slowdown`. CPU, Memory, GPU, Overview and
-History are always in. Name the tools to keep, and the pages of the rest are
-left out too:
+`security-audit`, `sensors`, `slowdown` and `startup-apps`. CPU, Memory, GPU,
+Overview and History are always in. Name the tools to keep, and the pages of
+the rest are left out too:
 
 ```sh
 npm run tauri build -- --features processes,disks,sensors -- --no-default-features

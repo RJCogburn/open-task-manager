@@ -300,6 +300,32 @@ export type PluginInfo = {
 };
 export type RunOutput = { status: number; stdout: string; stderr: string };
 
+export type StartupItem = {
+  /** "app:<file>", "user:<unit>", "system:<unit>" or "cron:<line>". */
+  id: string;
+  kind: "app" | "user-service" | "service" | "cron";
+  name: string;
+  description: string;
+  /** What it runs. */
+  command: string;
+  enabled: boolean;
+  origin: "yours" | "system";
+  /** Seconds it kept start-up busy at the last boot or login. */
+  startup: number | null;
+  /** Memory it uses now, in bytes. */
+  memory: number | null;
+  state: "running" | "failed" | "not running" | null;
+  /** Why it should stay on; switching it off asks first. */
+  caution: string | null;
+  /** Why it can't be switched off here. */
+  locked: string | null;
+  /** Switching it asks for the administrator password. */
+  admin: boolean;
+  /** Starts only on other desktops. */
+  otherDesktop: boolean;
+};
+export type StartupList = { items: StartupItem[]; desktop: string; cron: boolean };
+
 export type App = {
   name: string;
   version: string;
@@ -431,6 +457,8 @@ export const api = {
   setInterval: (ms: number) => invoke<void>("set_interval", { ms }),
   setDisabledTools: (tools: string[]) => invoke<void>("set_disabled_tools", { tools }),
   missingTools: () => invoke<string[]>("missing_tools"),
+  startupList: () => invoke<StartupList>("startup_list"),
+  startupSet: (id: string, on: boolean) => invoke<string>("startup_set", { id, on }),
   slowdownCheck: () => invoke<SlowdownReport>("slowdown_check"),
   slowdownWatch: (seconds: number) => invoke<WatchReport>("slowdown_watch", { seconds }),
   slowdownWatchStop: () => invoke<void>("slowdown_watch_stop"),

@@ -33,6 +33,8 @@ pub mod sensors;
 pub mod slowdown;
 #[cfg(feature = "slowdown")]
 pub mod slowdown_watch;
+#[cfg(feature = "startup-apps")]
+pub mod startup_apps;
 
 /// Tools this build left out, by their id in `src/tools/`, so the window can
 /// leave out their pages too.
@@ -49,6 +51,7 @@ pub fn missing_tools() -> Vec<&'static str> {
         ("sensors", cfg!(feature = "sensors")),
         ("security", cfg!(feature = "security-audit")),
         ("slowdown", cfg!(feature = "slowdown")),
+        ("startup", cfg!(feature = "startup-apps")),
     ]
     .into_iter()
     .filter(|&(_, built)| !built)

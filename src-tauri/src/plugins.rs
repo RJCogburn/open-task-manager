@@ -39,6 +39,7 @@ const RESERVED: &[&str] = &[
     "slowdown",
     "history",
     "security",
+    "startup",
     "settings",
     "about",
     "widgets",

@@ -25,7 +25,7 @@ use tauri::State;
 
 use crate::AppState;
 use crate::logging::xdg;
-use crate::programs;
+use crate::programs::{self, parse_duration};
 use crate::sampler::{self, Shared};
 
 #[derive(Serialize, Debug)]
@@ -863,7 +863,9 @@ fn slow_startup() -> Option<Check> {
         );
     }
     let list: Vec<String> = slow.iter().map(|(s, u)| format!("{u} ({s:.0} s)")).collect();
-    let mut c = check("startup", "warn", "Some services slow down start-up", took + &list.join(", ") + ".").more([
+    let mut c = check("startup", "warn", "Some services slow down start-up", took + &list.join(", ") + ".")
+        .page("startup")
+        .more([
         "These services kept start-up waiting at the last boot. Times can overlap, since services start side by side."
             .to_string(),
     ]);
@@ -932,24 +934,6 @@ fn parse_boot(text: &str) -> Option<Boot> {
 
 fn secs(s: f64) -> String {
     if s >= 60.0 { format!("{} min {:.0} s", (s / 60.0) as u64, s % 60.0) } else { format!("{s:.0} s") }
-}
-
-/// systemd's durations: "1min 2.345s", "12.3s", "456ms".
-fn parse_duration(text: &str) -> Option<f64> {
-    let mut total = 0.0;
-    for part in text.split_whitespace() {
-        let (num, unit) = part.split_at(part.find(|c: char| c.is_ascii_alphabetic())?);
-        let n: f64 = num.parse().ok()?;
-        total += n * match unit {
-            "ms" => 0.001,
-            "s" => 1.0,
-            "min" => 60.0,
-            "h" => 3600.0,
-            "us" | "µs" => 0.000_001,
-            _ => return None,
-        };
-    }
-    Some(total)
 }
 
 /// Runs one of the fixes the check offered. Each checks its target again, so

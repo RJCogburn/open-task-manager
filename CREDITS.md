@@ -25,7 +25,7 @@ not copied into it, so their licenses apply to them, not to this app.
 | [RPM](https://rpm.org/) | Installed packages on Fedora, openSUSE and other RPM-based systems | GPL-2.0-or-later |
 | [polkit](https://github.com/polkit-org/polkit) | Password prompt for acting on other users' processes (`pkexec`) | LGPL-2.0-or-later |
 | [xdg-utils](https://gitlab.freedesktop.org/xdg/xdg-utils) | Opening folders in the file manager (`xdg-open`) | MIT |
-| [systemd](https://systemd.io/) | Failed services and start-up times for the slowdown check (`systemctl`, `systemd-analyze`) | LGPL-2.1-or-later |
+| [systemd](https://systemd.io/) | Failed services and start-up times for the slowdown check, and switching services on and off on the Startup page (`systemctl`, `systemd-analyze`) | LGPL-2.1-or-later |
 | [power-profiles-daemon](https://gitlab.freedesktop.org/upower/power-profiles-daemon) | The current power profile for the slowdown check (`powerprofilesctl`), only if installed | GPL-3.0-or-later |
 | [nvme-cli](https://github.com/linux-nvme/nvme-cli) | Installing Western Digital firmware on NVMe drives (`nvme fw-download`, `fw-commit`), only if you do | GPL-2.0-or-later |
 | [Lynis](https://github.com/CISOfy/lynis) | The security audit (`lynis audit system`), only if installed | GPL-3.0-only |
@@ -61,6 +61,7 @@ No code from these projects is included, but they shaped how parts of this app w
 | [KDE System Monitor](https://apps.kde.org/plasma-systemmonitor/) | Process table, sensors and per-page layout | GPL-2.0-or-later |
 | [s-tui](https://github.com/amanusk/s-tui) | CPU frequency, temperature and power side by side | GPL-2.0-only |
 | [wd_ssd_firmware_update](https://github.com/not-a-feature/wd_ssd_firmware_update) | How to find and install Western Digital firmware on Linux | GPL-3.0 |
+| [Autostart Manager](https://github.com/filonux/Autostart_Manager) | One list of everything that starts with your session, each with a switch; system entries turned off with your own copy | GPL-3.0 |
 
 ## Built with
 

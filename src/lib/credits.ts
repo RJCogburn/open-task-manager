@@ -183,9 +183,16 @@ export const credits = {
     url: "https://github.com/not-a-feature/wd_ssd_firmware_update",
     group: "inspired",
   },
+  autostartManager: {
+    name: "Autostart Manager",
+    role: "One list of everything that starts with your session, each with a switch; system entries turned off with your own copy",
+    license: "GPL-3.0",
+    url: "https://github.com/filonux/Autostart_Manager",
+    group: "inspired",
+  },
   systemd: {
     name: "systemd",
-    role: "Failed services and start-up times for the slowdown check (systemctl, systemd-analyze)",
+    role: "Failed services and start-up times for the slowdown check, and switching services on and off on the Startup page (systemctl, systemd-analyze)",
     license: "LGPL-2.1-or-later",
     url: "https://systemd.io/",
     group: "runs",

@@ -228,6 +228,10 @@ pub fn run() {
             tools::security_fix::security_undo,
             #[cfg(feature = "security-audit")]
             tools::security_fix::security_changes,
+            #[cfg(feature = "startup-apps")]
+            tools::startup_apps::startup_list,
+            #[cfg(feature = "startup-apps")]
+            tools::startup_apps::startup_set,
             #[cfg(feature = "slowdown")]
             tools::slowdown::slowdown_check,
             #[cfg(feature = "slowdown")]
