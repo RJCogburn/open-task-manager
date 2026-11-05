@@ -44,6 +44,8 @@
   const page = $derived(current === "settings" ? null : (all.find((p) => p.id === current) ?? all[0]));
   // Pages link to other pages through this.
   setContext("otm.go", (id: string) => go(id));
+  // A page's name by its id, for pages that link to others.
+  setContext("otm.label", (id: string) => allTools().find((t) => t.id === id)?.label);
   // The page header finds its tool's sources through this.
   setContext("otm.tool", () => allTools().find((t) => t.id === page?.id));
 

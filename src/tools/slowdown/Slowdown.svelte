@@ -4,9 +4,10 @@
   import PageHeader from "$lib/PageHeader.svelte";
   import { api, parseError, type SlowdownAction, type SlowdownCheck, type SlowdownReport, type WatchReport } from "$lib/api";
   import { toolOn } from "$lib/settings.svelte";
-  import { tools } from "../registry";
 
   const go = getContext<(id: string) => void>("otm.go");
+  // Through App rather than the tool registry: the registry imports this page.
+  const toolLabel = getContext<(id: string) => string | undefined>("otm.label");
 
   let report = $state<SlowdownReport | null>(null);
   let running = $state(false);
@@ -121,7 +122,7 @@
   );
 
   // A link only to pages that are switched on.
-  const pageLabel = (id: string | null) => (id && toolOn(id) ? tools.find((t) => t.id === id)?.label : undefined);
+  const pageLabel = (id: string | null) => (id && toolOn(id) ? toolLabel(id) : undefined);
 </script>
 
 <PageHeader title="Slowdown check" subtitle="What could be making your computer slow, checked just now">
